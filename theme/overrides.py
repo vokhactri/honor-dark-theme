@@ -1,7 +1,5 @@
 """Per-app cutout and placement settings. Apps without an entry use App() (or GOOGLE for data/google)."""
 
-from dataclasses import replace
-
 from .unify import App
 
 # data/google holds Google's redesigned icons on white
