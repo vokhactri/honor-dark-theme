@@ -8,7 +8,9 @@ from .unify import App
 GOOGLE = App(key='outside', bg=(255, 255, 255), recolor=None, frac=0.72)
 
 OVERRIDES: dict[str, App] = {
+    'app.revanced.android.youtube': App(recolor=None),
     'app.revanced.manager.flutter': App(frac=0.60),
+    'com.android.vending': App(recolor=None, frac=0.72),
     'com.bhxhapp': App(frac=0.715),
     'com.brave.browser': App(recolor=None),
     'com.cloudflare.cloudflareoneagent': App(key='warm', recolor=None),
@@ -18,8 +20,14 @@ OVERRIDES: dict[str, App] = {
     ),
     'com.facebook.orca': App(key='outside', recolor=None),
     'com.finx.vikki': App(recolor=None, frac=0.86, specks=False),
-    'com.google.android.apps.docs': replace(GOOGLE, holes=True),
-    'com.google.android.apps.maps': replace(GOOGLE, holes=True),
+    'com.google.android.apps.authenticator2': App(recolor=None, frac=0.72),
+    'com.google.android.apps.bard': App(recolor=None, frac=0.72),
+    'com.google.android.apps.docs': App(recolor=None, frac=0.72),
+    'com.google.android.apps.docs.editors.sheets': App(recolor=None, frac=0.72),
+    'com.google.android.apps.maps': App(recolor=None, frac=0.72),
+    'com.google.android.apps.photos': App(recolor=None, frac=0.72),
+    'com.google.android.apps.walletnfcrel': App(recolor=None, frac=0.72),
+    'com.google.android.googlequicksearchbox': App(recolor=None, frac=0.72),
     'com.gsm.customer': App(recolor=None),
     'com.hihonor.appmarket': App(key='white', recolor=(70, 150, 255), frac=0.74),
     'com.hihonor.ouc': App(key='whitefill', recolor=None, frac=0.62),
