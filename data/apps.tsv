@@ -29,6 +29,7 @@ com.hihonor.calendar	Calendar
 com.hihonor.camera	Camera
 com.hihonor.compass	Compass
 com.hihonor.contacts	Contacts
+com.android.contacts.activities.DialtactsActivity	Phone
 com.hihonor.deskclock	Clock
 com.hihonor.filemanager	File Manager
 com.hihonor.mirror	Mirror
