@@ -87,6 +87,7 @@ def pack(v: str) -> None:
 
     desc = outer / 'description.xml'
     desc.write_text(desc.read_text().replace('{title}', title))
+    (outer / 'preview').mkdir()
     previews.render(v, title, outer / 'preview')
     # `icons` is a deflated zip without an extension, stored inside the outer zip
     with zipfile.ZipFile(outer / 'icons', 'w', zipfile.ZIP_DEFLATED) as zf:
