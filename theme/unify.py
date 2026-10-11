@@ -38,6 +38,7 @@ class App:
     wlo: float = 150  # key='white': min RGB channel ramp from transparent...
     whi: float = 230  # ...to opaque
     lift: bool = False  # brighten dark glyph pixels after the cutout
+    specks: bool = True  # drop tiny parts before placing; False keeps small text (i dots, thin stems)
     frac: float = 0.70  # glyph size, as a fraction of the icon
     dx: float = 0.0  # offset from centre, as a fraction of the icon
     dy: float = 0.0
@@ -318,7 +319,7 @@ def lift(fg: Arr, min_luma: float = 95, amount: float = 0.6) -> Arr:
 def compose(fg: Arr, app: App, glare: bool) -> Image.Image:
     """Centre the glyph on the shared plate at `app.frac` of the icon size, clip to the squircle."""
     frac, dx, dy = app.frac, app.dx, app.dy
-    fgim = Image.fromarray(drop_specks(fg.copy()).astype(np.uint8))
+    fgim = Image.fromarray((drop_specks(fg.copy()) if app.specks else fg).astype(np.uint8))
     out = Image.fromarray(PLATE.astype(np.uint8))
     if bb := alpha_bbox(fgim, 20):
         g = fgim.crop(bb)

@@ -17,6 +17,7 @@ OVERRIDES: dict[str, App] = {
         key='white', wlo=80, whi=190, recolor=(245, 65, 66), frac=0.48, dx=-0.022, dy=0.025
     ),
     'com.facebook.orca': App(key='outside', recolor=None),
+    'com.finx.vikki': App(recolor=None, frac=0.86, specks=False),
     'com.google.android.apps.docs': replace(GOOGLE, holes=True),
     'com.google.android.apps.maps': replace(GOOGLE, holes=True),
     'com.gsm.customer': App(recolor=None),
@@ -25,6 +26,8 @@ OVERRIDES: dict[str, App] = {
     'com.hihonor.search': App(key='white', recolor=(30, 140, 255), frac=0.64),
     'com.inbody2014.inbody': App(recolor=(235, 45, 55)),
     'com.instagram.android': App(key='white', recolor='field'),
+    'com.mbmobile': App(recolor=None),
+    'com.msb.digibank.retail': App(recolor=None),
     'com.mservice.momotransfer': App(key='white', recolor=(235, 40, 150), frac=0.62),
     'com.okinc.okex.gp': App(key='white', recolor=None, frac=0.56),
     'com.ots.c08.vnetraffic': App(recolor=None, frac=0.72, dy=0.03),
