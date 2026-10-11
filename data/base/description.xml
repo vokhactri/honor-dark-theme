@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<HwTheme>
+	<title>{title}</title>
+	<title-cn>{title}</title-cn>
+	<author>trivk</author>
+	<designer>trivk</designer>
+	<screen>FHD</screen>
+	<version>14.0.0</version>
+	<font>Droid Sans</font>
+	<font-cn>Droid Sans</font-cn>
+	<theme-banner-show>true</theme-banner-show>
+	<dark-light-supported>true</dark-light-supported>
+	<wallpaper>HWThemeEngine</wallpaper>
+	<briefinfo>trivk</briefinfo>
+</HwTheme>

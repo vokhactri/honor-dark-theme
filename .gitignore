@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+build/
+dist/
+*.hnt
+*.bak
+*.bak-*
+.DS_Store
+.tmp.drive*/
+# review images kept next to the repo, not part of the source
+/mockup-*.png
+/preview-*.png
+/missing-apps.png
+missing_apps.tsv

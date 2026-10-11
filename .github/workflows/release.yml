@@ -1,0 +1,40 @@
+# Push a v* tag to build both themes and publish them as a GitHub release.
+# Run it by hand (Actions > Release > Run workflow) to only build and download the .hnt files as an artifact.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.0
+      - if: github.ref_type == 'tag'
+        name: Check the tag matches the version in pyproject.toml
+        run: |
+          [ "$GITHUB_REF_NAME" = "v$(uv version --short)" ] || {
+            echo "::error::tag $GITHUB_REF_NAME does not match version $(uv version --short), run uv version --bump first"
+            exit 1
+          }
+      - run: uv sync --locked
+      - run: uv run ruff format --check && uv run ruff check
+      - run: uv run -m theme.build
+      - uses: actions/upload-artifact@v7
+        with:
+          name: themes
+          path: dist/*.hnt
+      - if: github.ref_type == 'tag'
+        name: Publish the release
+        run: |
+          # versions with letters (1.1.0b1, 2.0.0rc1) are pre-releases, so they don't become "Latest"
+          case "${GITHUB_REF_NAME#v}" in *[a-z]*) pre=--prerelease ;; *) pre= ;; esac
+          gh release create "$GITHUB_REF_NAME" dist/*.hnt --title "$GITHUB_REF_NAME" --generate-notes $pre
+        env:
+          GH_TOKEN: ${{ github.token }}
