@@ -69,7 +69,7 @@ theme/
   mockup.py     labelled icon sheets for review
 data/
   apps.tsv      every app in the theme: package and label
-  base/         the rest of the theme: description.xml, font, wallpapers, lock screen
+  base/         the rest of the theme: description.xml, wallpapers, lock screen
   inter/        Inter fonts (SIL OFL) for the preview images and mockups
   system/       launcher assets: icon_mask, icon_border, folder_*, status_bar_* and others
   plate_profile.npy  vertical colour gradient of the shared plate
@@ -93,7 +93,7 @@ To add an app, add a line to `data/apps.tsv`, drop its icon in `data/store/` (or
 
 A `.hnt` file is an uncompressed zip. Inside it, the `icons` entry is a second, deflated zip with no file extension that holds one `<package>.png` per app.
 
-The phone refuses the theme if `unlock/`, `wallpaper/` or `fonts/` is missing, even when you only want the icons. Keep them, and untick Lock screen and Home screen when you apply the theme instead.
+The theme ships no font. Like Honor's own themes, `description.xml` says `<font>Default</font>` so the system font stays. The phone refuses the theme if `unlock/` and `wallpaper/` are missing (tested together, not one at a time), even when you only want the icons. Keep them, and untick Lock screen and Home screen when you apply the theme instead.
 
 ## Credits
 

@@ -100,7 +100,7 @@ def pack(v: str) -> None:
     DIST.mkdir(exist_ok=True)
     hnt = DIST / f'{title.replace(" ", "-")}-Honor.hnt'
     with zipfile.ZipFile(hnt, 'w', zipfile.ZIP_STORED) as zf:
-        for rel in ('unlock', 'wallpaper', 'description.xml', 'icons', 'fonts', 'preview'):
+        for rel in ('unlock', 'wallpaper', 'description.xml', 'icons', 'preview'):
             zipdir(zf, outer, rel)
     with zipfile.ZipFile(hnt) as zf:
         assert zf.testzip() is None
