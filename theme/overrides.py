@@ -36,7 +36,6 @@ OVERRIDES: dict[str, App] = {
     'com.grabtaxi.passenger': App(recolor=None),
     'com.gsm.customer': App(recolor=None),
     'com.hihonor.appmarket': App(key='white', recolor=(70, 150, 255), frac=0.74),
-    'com.hihonor.ouc': App(key='whitefill', recolor=None, frac=0.62),
     'com.inbody2014.inbody': App(recolor=None),
     'com.instagram.android': App(key='white', recolor='field'),
     'com.larksuite.suite': App(recolor=None),
