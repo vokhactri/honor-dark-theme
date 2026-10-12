@@ -7,6 +7,13 @@ Two dark icon themes for Honor phones running MagicOS:
 
 Every icon sits on one shared dark plate, so third-party apps match the stock Honor and Google icons. The pack covers 106 apps, mostly ones common in Vietnam (banks, Zalo, MoMo, Grab, Shopee) plus Google, Honor and a handful of open-source tools. Honor's own apps use the glyphs from Honor's built-in Glory theme.
 
+Both themes also bring:
+
+- **Status bar icons**: Wi-Fi, signal, battery, alarm and the rest are drawn with Material Symbols Rounded, and the network labels (4G, VoLTE, SIM 1/2) are set in Inter. Notifications and Control Center keep their stock dark look.
+- **Fingerprint icon**: the in-screen sensor shows the XANA symbol from Code Lyoko. When a finger touches it, it turns red from the bottom up, like a tower XANA activates.
+
+For a system-wide Inter font, see [honor-inter-font](https://github.com/vokhactri/honor-inter-font).
+
 ## Install
 
 1. Download a `.hnt` file from [Releases](../../releases).
@@ -24,7 +31,7 @@ uv run -m theme.build                  # all icons, writes dist/Dark-Glare-Honor
 uv run -m theme.build com.zing.zalo    # rebuild only these apps, reuse the rest from build/out
 ```
 
-A full build takes about 20 seconds. It also writes labelled icon sheets to `build/mockup-glare.png` and `build/mockup-flat.png` for review.
+A full build takes about 20 seconds. For review, it also writes labelled icon sheets to `build/mockup-glare.png` and `build/mockup-flat.png`, the status bar icons to `build/statusbar/` and the fingerprint animation frames to `build/fingerprint/`. To redraw only the status bar icons, run `uv run -m theme.statusbar`.
 
 Format and lint with ruff before committing:
 
@@ -42,7 +49,7 @@ uv run ruff check
    adb push dist/Dark-Glare-Honor.hnt dist/Dark-Flat-Honor.hnt /sdcard/Honor/Themes/
    ```
 
-2. Bump the version: `patch` for icon tweaks, `minor` for new apps, `major` for a new look.
+2. Bump the version: `patch` for icon tweaks, `minor` for new apps or modules, `major` for a new look.
 
    ```sh
    uv version --bump minor    # updates pyproject.toml and uv.lock
@@ -67,10 +74,14 @@ theme/
   overrides.py  per-app settings such as cutout key, colour and size
   previews.py   wallpapers, cover and preview images shown in the Themes app
   mockup.py     labelled icon sheets for review
+  statusbar.py  status bar icons (the com.android.systemui.status module)
+  fingerprint.py  fingerprint icon and touch animation
 data/
   apps.tsv      every app in the theme: package and label
   base/         the rest of the theme: description.xml, lock screen
-  inter/        Inter fonts (SIL OFL) for the preview images and mockups
+  inter/        Inter fonts (SIL OFL) for the preview images, mockups and status bar labels
+  statusbar/    Material Symbols Rounded glyphs (Apache 2.0), stock drawable sizes (sizes.tsv) and the module's theme.xml
+  fingerprint/  the XANA symbol, recoloured white
   system/       launcher assets from Glory: icon_mask, icon_masks/ (corner styles), icon_folders/ and others
   icon_border.png    the glare rim baked into the Dark Glare icons
   plate_profile.npy  vertical colour gradient of the shared plate
@@ -97,9 +108,17 @@ A `.hnt` file is an uncompressed zip. Its layout follows Honor's built-in Glory 
 - `description.xml` (`<HnTheme>`), `unlock/theme.xml`, `wallpaper/` (a 2800x2800 home wallpaper and a 1280x2800 lock screen wallpaper).
 - `icons`, a second, deflated zip with no file extension. Each app is an adaptive icon, `<package>/foreground.png` on `<package>/background.png`, both 294px; the launcher shows the middle 196px through `icon_mask.png`. The background is the shared plate, the foreground is the glyph (with the glare baked in for Dark Glare). An app that shares its package with another app uses its activity class name instead, e.g. `com.android.contacts.activities.DialtactsActivity` for Phone.
 - `preview/`: `cover.jpg` (1080x1920, the card in the theme list), `preview_*.jpg` (1280x2800, the detail page), `icon_small.jpg` (510x345) and `icon_small_1.jpg` (612x612) for the icon list, and `icon_thumbnail.png` with the 218px Phone, Gallery and Camera icons that Settings shows.
+- `com.android.systemui.status`, a deflated zip of `res/drawable-xxhdpi/<name>.png`. Each PNG replaces the SystemUI drawable with that name, using the names from Honor's official 荣耀机器人 theme. The icons are black on transparent and SystemUI tints them. Each canvas has the stock drawable's size, because SystemUI stretches the PNG to it.
+- `fingerprint_icon/` and `fingerprint_anim/`, plain directories. The icon is an SVG sized in dp. A pure white SVG gets tinted and filled with the blurred wallpaper, like the stock icon. The animation is up to 30 PNGs in `res/light/`, played once on touch at `<lightfps>` and centred on the sensor at their pixel size. The installer drops either module if it has no `name.xml`, and drops the animation if it has no `res/shortcut/shortcut.png`.
+
+When you apply the theme, the Themes app merges `com.android.systemui.status` into a `com.android.systemui` zip without a `night/` entry. SystemUI then treats the theme as light-only and switches notifications and Control Center to light colours. The module's `theme.xml` sets `hn_special_transparent_mode_color` to white, which tells SystemUI the theme supports transparent mode and keeps the stock dark look. Don't add the `values-night` colours there instead: they also apply in daytime and break the lock screen notifications and Control Center tiles.
 
 The theme ships no font. Like Honor's own themes, `description.xml` says `<font>Default</font>` so the system font stays. The phone refuses the theme if `unlock/` and `wallpaper/` are missing (tested together, not one at a time), even when you only want the icons. Keep them, and untick Lock screen and Home screen when you apply the theme instead.
 
 ## Credits
 
 Logos and icons belong to their owners.
+
+- Status bar glyphs: [Material Symbols](https://github.com/google/material-design-icons) by Google, Apache 2.0.
+- Fonts: [Inter](https://rsms.me/inter/) by Rasmus Andersson, SIL OFL.
+- Fingerprint icon: the [XANA symbol](https://codelyoko.com/XANAsymbol.svg) from Code Lyoko.
