@@ -368,6 +368,7 @@ def compose(fg: Arr, app: App, glare: bool) -> Image.Image:
 
 
 type GloryFix = Literal['invert', 'flatten', 'band', 'tint'] | None
+HANDLE = (139, 64, 29)  # Themes brush handle: orange-brown plastic, #8B401D
 
 
 def adaptive_layer(path: StrPath) -> Arr:
@@ -389,7 +390,7 @@ def from_glory(fg_path: StrPath, bg_path: StrPath, fix: GloryFix, glare: bool) -
     """Take the foreground layer of a Glory theme icon, for the shared plate in place of its light background.
 
     invert: flip grey-black parts (clock hands, remote body) to light so they read on the plate
-    flatten: make see-through black parts (the brush handle) opaque in the grey they show on Glory's white plate
+    flatten: make see-through black parts (the brush handle) opaque, in HANDLE with the shading they show on white
     band: keep the coloured parts of the background (the calendar's red header)
     tint: colour a pale glyph with its background colour (Phone and Contacts green, App Market blue)
     """
@@ -406,7 +407,11 @@ def from_glory(fg_path: StrPath, bg_path: StrPath, fix: GloryFix, glare: bool) -
         a = fg[..., 3:4] / 255
         cov = np.clip(a / 0.5, 0, 1)  # the handle is black at about 0.55 alpha
         # its look on white, with the white at the anti-aliased edges taken back out
-        fg[..., :3] = (rgb * a + 255 * (1 - a) - 255 * (1 - cov)) / np.maximum(cov, 1e-3)
+        flat_rgb = (rgb * a + 255 * (1 - a) - 255 * (1 - cov)) / np.maximum(cov, 1e-3)
+        # the grey handle looks muddy on the plate: colour it, keeping its shading (the shadow under the bristles)
+        handle = np.clip((0xA0 - rgb.max(2, keepdims=True)) / 0x40, 0, 1)
+        shade = np.clip(flat_rgb.mean(2, keepdims=True) / 0x73, 0, 1)
+        fg[..., :3] = flat_rgb * (1 - handle) + shade * np.array(HANDLE) * handle
         fg[..., 3:4] = cov * 255
     out = np.zeros((S, S, 4))
     if fix == 'band':
