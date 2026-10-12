@@ -1,4 +1,8 @@
-"""Image work: cut the glyph out of a source icon, put it on the shared plate, add glare."""
+"""Image work: cut the glyph out of a source icon, place it for the shared plate, add glare.
+
+Every icon is built as the foreground layer of an adaptive icon (S x S, covering the part the launcher shows);
+the shared plate is the background layer.
+"""
 
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -17,11 +21,17 @@ type Color = Sequence[float] | npt.NDArray[np.floating]  # rgb 0..255
 type StrPath = str | PathLike[str]
 
 S = 512
-MASK = (
-    np.asarray(Image.open(DATA / 'system/icon_mask.png').getchannel('A').resize((S, S), Image.LANCZOS)).astype(float)
-    / 255
-)
-BORDER = Image.open(DATA / 'system/icon_border.png').convert('RGBA').resize((S, S), Image.LANCZOS)
+LAYER, VIEW = 294, 196  # adaptive layer size and the centre part the launcher shows (72 of 108 dp), as in Glory
+
+
+def _mask() -> Image.Image:
+    """The launcher's icon mask (218px, the squircle is the middle 196px), cropped to the squircle."""
+    m = Image.open(DATA / 'system/icon_mask.png').getchannel('A')
+    return m.crop(m.getbbox()).resize((S, S), Image.LANCZOS)
+
+
+MASK = np.asarray(_mask()).astype(float) / 255
+BORDER = Image.open(DATA / 'icon_border.png').convert('RGBA').resize((S, S), Image.LANCZOS)  # glare rim
 PROFILE = np.load(DATA / 'plate_profile.npy')  # vertical plate colour of the stock Google/Honor icons
 PLATE = np.dstack([np.broadcast_to(PROFILE[:, None, :], (S, S, 3)), MASK * 255])
 
@@ -76,7 +86,8 @@ def luma(x: Arr) -> Arr:
 
 
 def from_orig(path: StrPath, glare: bool = False) -> Image.Image:
-    """Keep a stock pack icon intact: only normalise its frame and rim."""
+    """Keep a stock pack icon intact: only normalise its frame and rim. The whole icon, plate included, is the
+    foreground."""
     a = trimmed(path)
     al = a[..., 3:4] / 255
     out = PLATE.copy()
@@ -89,10 +100,37 @@ def from_orig(path: StrPath, glare: bool = False) -> Image.Image:
     out[..., :3] = rgb * (1 - w[..., None]) + PLATE[..., :3] * w[..., None]
     out[..., :3] = match_plate(out[..., :3])
     out[..., 3] = MASK * 255
-    img = Image.fromarray(np.clip(out, 0, 255).astype(np.uint8))
+    return finish(out, glare)
+
+
+def finish(fg: Arr, glare: bool) -> Image.Image:
+    """Clip a foreground layer to the squircle and add the glare rim."""
+    fg[..., 3] = np.minimum(fg[..., 3], MASK * 255)
+    img = Image.fromarray(np.clip(fg, 0, 255).astype(np.uint8))
     if glare:
         img.alpha_composite(BORDER)
     return img
+
+
+def flat(fg: Image.Image) -> Image.Image:
+    """The icon as the launcher draws it: foreground on the shared plate, clipped to the squircle."""
+    out = Image.fromarray(PLATE.astype(np.uint8))
+    out.alpha_composite(fg.convert('RGBA'))
+    o = np.asarray(out).copy()
+    o[..., 3] = np.minimum(o[..., 3], (MASK * 255).astype(np.uint8))
+    return Image.fromarray(o)
+
+
+def layers(fg: Image.Image) -> tuple[Image.Image, Image.Image]:
+    """Adaptive icon layers like Glory's: the foreground in the middle VIEW px of a LAYER px canvas, and the plate
+    filling the whole background (its gradient runs over the shown part and holds its end colours beyond)."""
+    m = (LAYER - VIEW) // 2
+    front = Image.new('RGBA', (LAYER, LAYER))
+    front.alpha_composite(fg.convert('RGBA').resize((VIEW, VIEW), Image.LANCZOS), (m, m))
+    rows = np.clip((np.arange(LAYER) - m + 0.5) / VIEW * S - 0.5, 0, S - 1)  # layer row -> plate row
+    col = np.stack([np.interp(rows, np.arange(S), PROFILE[:, c]) for c in range(3)], -1)
+    back = np.broadcast_to(col[:, None, :], (LAYER, LAYER, 3))
+    return front, Image.fromarray(np.round(back).astype(np.uint8))
 
 
 def match_plate(rgb: Arr) -> Arr:
@@ -317,23 +355,16 @@ def lift(fg: Arr, min_luma: float = 95, amount: float = 0.6) -> Arr:
 
 
 def compose(fg: Arr, app: App, glare: bool) -> Image.Image:
-    """Centre the glyph on the shared plate at `app.frac` of the icon size, clip to the squircle."""
+    """Centre the glyph at `app.frac` of the icon size, clip to the squircle."""
     frac, dx, dy = app.frac, app.dx, app.dy
     fgim = Image.fromarray((drop_specks(fg.copy()) if app.specks else fg).astype(np.uint8))
-    out = Image.fromarray(PLATE.astype(np.uint8))
+    layer = Image.new('RGBA', (S, S))
     if bb := alpha_bbox(fgim, 20):
         g = fgim.crop(bb)
         k = frac * S / max(g.size)
         g = g.resize((max(1, round(g.width * k)), max(1, round(g.height * k))), Image.LANCZOS)
-        layer = Image.new('RGBA', (S, S))
         layer.alpha_composite(g, ((S - g.width) // 2 + int(dx * S), (S - g.height) // 2 + int(dy * S)))
-        out.alpha_composite(layer)
-    o = np.asarray(out).astype(float)
-    o[..., 3] = np.minimum(o[..., 3], MASK * 255)
-    out = Image.fromarray(o.astype(np.uint8))
-    if glare:
-        out.alpha_composite(BORDER)
-    return out
+    return finish(np.asarray(layer).astype(float), glare)
 
 
 type GloryFix = Literal['invert', 'flatten', 'band', 'tint'] | None
@@ -347,12 +378,15 @@ def adaptive_layer(path: StrPath) -> Arr:
 
 
 def over(dst: Arr, src: Arr) -> None:
-    a = src[..., 3:4] / 255
-    dst[..., :3] = src[..., :3] * a + dst[..., :3] * (1 - a)
+    """Alpha-composite src onto dst in place."""
+    a, b = src[..., 3:4] / 255, dst[..., 3:4] / 255
+    out = a + b * (1 - a)
+    dst[..., :3] = (src[..., :3] * a + dst[..., :3] * b * (1 - a)) / np.maximum(out, 1e-6)
+    dst[..., 3:4] = out * 255
 
 
 def from_glory(fg_path: StrPath, bg_path: StrPath, fix: GloryFix, glare: bool) -> Image.Image:
-    """Put the foreground layer of a Glory theme icon on the shared plate, in place of its light background.
+    """Take the foreground layer of a Glory theme icon, for the shared plate in place of its light background.
 
     invert: flip grey-black parts (clock hands, remote body) to light so they read on the plate
     flatten: make see-through black parts (the brush handle) opaque in the grey they show on Glory's white plate
@@ -374,14 +408,10 @@ def from_glory(fg_path: StrPath, bg_path: StrPath, fix: GloryFix, glare: bool) -
         # its look on white, with the white at the anti-aliased edges taken back out
         fg[..., :3] = (rgb * a + 255 * (1 - a) - 255 * (1 - cov)) / np.maximum(cov, 1e-3)
         fg[..., 3:4] = cov * 255
-    out = PLATE.copy()
+    out = np.zeros((S, S, 4))
     if fix == 'band':
         mx, mn = bg[..., :3].max(2), bg[..., :3].min(2)
         bg[..., 3] *= np.clip((mx - mn - 40) / 40, 0, 1)
         over(out, bg)
     over(out, fg)
-    out[..., 3] = MASK * 255
-    img = Image.fromarray(np.clip(out, 0, 255).astype(np.uint8))
-    if glare:
-        img.alpha_composite(BORDER)
-    return img
+    return finish(out, glare)

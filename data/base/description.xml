@@ -1,15 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<HwTheme>
-	<title>{title}</title>
-	<title-cn>{title}</title-cn>
-	<author>trivk</author>
-	<designer>trivk</designer>
-	<screen>FHD</screen>
-	<version>14.0.0</version>
-	<font>Default</font>
-	<font-cn>默认</font-cn>
-	<theme-banner-show>true</theme-banner-show>
-	<dark-light-supported>true</dark-light-supported>
-	<wallpaper>HWThemeEngine</wallpaper>
-	<briefinfo>trivk</briefinfo>
-</HwTheme>
+<HnTheme>
+    <title>{title}</title>
+    <title-cn>{title}</title-cn>
+    <author>trivk</author>
+    <designer>trivk</designer>
+    <screen>FHD</screen>
+    <version>14.0.0</version>
+    <font>Default</font>
+    <font-cn>默认</font-cn>
+    <briefInfo>Dark icons on one shared plate, for Honor, Google and third-party apps.</briefInfo>
+</HnTheme>

@@ -4,6 +4,7 @@ from PIL import Image, ImageDraw
 
 from .paths import APPS, BUILD
 from .previews import font
+from .unify import flat
 
 COLS, CELL = 12, 150
 
@@ -18,7 +19,7 @@ def render(variant: str, title: str) -> None:
     for i, p in enumerate(pkgs):
         x = 20 + (i % COLS) * CELL + 12
         y = 70 + (i // COLS) * (CELL + 26)
-        im = Image.open(BUILD / f'out/{variant}/{p}.png').resize((126, 126), Image.LANCZOS)
+        im = flat(Image.open(BUILD / f'out/{variant}/{p}.png')).resize((126, 126), Image.LANCZOS)
         s.paste(im, (x, y), im)
         w = d.textlength(APPS[p], font=label)
         d.text((x + 63 - w / 2, y + 130), APPS[p], fill=(215, 215, 215), font=label)

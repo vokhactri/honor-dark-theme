@@ -9,10 +9,10 @@ import numpy as np
 from PIL import Image
 
 from theme.paths import BUILD
-from theme.unify import MASK, PLATE, S
+from theme.unify import MASK, PLATE, S, flat
 
 for p in sys.argv[1:]:
-    a = np.asarray(Image.open(BUILD / f'out/flat/{p}.png').convert('RGBA')).astype(float)
+    a = np.asarray(flat(Image.open(BUILD / f'out/flat/{p}.png'))).astype(float)
     glyph = (np.abs(a[..., :3] - PLATE[..., :3]).max(-1) > 40) & (MASK > 0.99)
     ys, xs = np.nonzero(glyph)
     w, h = (xs.max() - xs.min() + 1) / S, (ys.max() - ys.min() + 1) / S

@@ -65,13 +65,14 @@ theme/
   build.py      builds each app's icon, then packs both .hnt files
   unify.py      image work: cut out the glyph, recolour it, put it on the shared plate, add glare
   overrides.py  per-app settings such as cutout key, colour and size
-  previews.py   cover and preview images shown in the Themes app
+  previews.py   wallpapers, cover and preview images shown in the Themes app
   mockup.py     labelled icon sheets for review
 data/
   apps.tsv      every app in the theme: package and label
-  base/         the rest of the theme: description.xml, wallpapers, lock screen
+  base/         the rest of the theme: description.xml, lock screen
   inter/        Inter fonts (SIL OFL) for the preview images and mockups
-  system/       launcher assets: icon_mask, icon_border, folder_*, status_bar_* and others
+  system/       launcher assets from Glory: icon_mask, icon_masks/ (corner styles), icon_folders/ and others
+  icon_border.png    the glare rim baked into the Dark Glare icons
   plate_profile.npy  vertical colour gradient of the shared plate
 scripts/        helpers for making cutouts and checking icon sizes
 ```
@@ -91,7 +92,11 @@ To add an app, add a line to `data/apps.tsv`, drop its icon in `data/store/` (or
 
 ## The .hnt format
 
-A `.hnt` file is an uncompressed zip. Inside it, the `icons` entry is a second, deflated zip with no file extension that holds one `<package>.png` per app.
+A `.hnt` file is an uncompressed zip. Its layout follows Honor's built-in Glory theme:
+
+- `description.xml` (`<HnTheme>`), `unlock/theme.xml`, `wallpaper/` (a 2800x2800 home wallpaper and a 1280x2800 lock screen wallpaper).
+- `icons`, a second, deflated zip with no file extension. Each app is an adaptive icon, `<package>/foreground.png` on `<package>/background.png`, both 294px; the launcher shows the middle 196px through `icon_mask.png`. The background is the shared plate, the foreground is the glyph (with the glare baked in for Dark Glare). An app that shares its package with another app uses its activity class name instead, e.g. `com.android.contacts.activities.DialtactsActivity` for Phone.
+- `preview/`: `cover.jpg` (1080x1920, the card in the theme list), `preview_*.jpg` (1280x2800, the detail page), `icon_small.jpg` (510x345) and `icon_small_1.jpg` (612x612) for the icon list, and `icon_thumbnail.png` with the 218px Phone, Gallery and Camera icons that Settings shows.
 
 The theme ships no font. Like Honor's own themes, `description.xml` says `<font>Default</font>` so the system font stays. The phone refuses the theme if `unlock/` and `wallpaper/` are missing (tested together, not one at a time), even when you only want the icons. Keep them, and untick Lock screen and Home screen when you apply the theme instead.
 
