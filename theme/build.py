@@ -12,13 +12,13 @@ from pathlib import Path
 from PIL import Image
 
 from . import mockup, previews
-from .overrides import GOOGLE, OVERRIDES
+from .overrides import GLORY, GOOGLE, OVERRIDES
 from .paths import APPS, BUILD, DATA, DIST
-from .unify import App, compose, from_orig, from_pack, from_store
+from .unify import App, compose, from_glory, from_orig, from_pack, from_store
 
 VARIANTS = {'glare': 'Dark Glare', 'flat': 'Dark Flat'}
 # where each app's source image lives, see the README
-SOURCES = ('web', 'orig', 'pack', 'google', 'store')
+SOURCES = ('web', 'glory', 'orig', 'pack', 'google', 'store')
 
 
 def source(p: str) -> Path:
@@ -33,6 +33,10 @@ def render(p: str) -> None:
     src = source(p)
     kind = src.parent.name
     out = {v: BUILD / f'out/{v}/{p}.png' for v in VARIANTS}
+    if kind == 'glory':
+        for v, f in out.items():
+            from_glory(src, src.with_suffix('.bg.png'), GLORY.get(p), glare=v == 'glare').save(f)
+        return
     if kind == 'orig':
         for v, f in out.items():
             from_orig(src, glare=v == 'glare').save(f)

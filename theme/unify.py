@@ -334,3 +334,54 @@ def compose(fg: Arr, app: App, glare: bool) -> Image.Image:
     if glare:
         out.alpha_composite(BORDER)
     return out
+
+
+type GloryFix = Literal['invert', 'flatten', 'band', 'tint'] | None
+
+
+def adaptive_layer(path: StrPath) -> Arr:
+    """Load an adaptive icon layer, cropped to the centre 2/3 the launcher shows (72 of 108 dp) and scaled to S."""
+    im = Image.open(path).convert('RGBA')
+    c = round(im.width / 6)
+    return np.asarray(im.crop((c, c, im.width - c, im.height - c)).resize((S, S), Image.LANCZOS)).astype(float)
+
+
+def over(dst: Arr, src: Arr) -> None:
+    a = src[..., 3:4] / 255
+    dst[..., :3] = src[..., :3] * a + dst[..., :3] * (1 - a)
+
+
+def from_glory(fg_path: StrPath, bg_path: StrPath, fix: GloryFix, glare: bool) -> Image.Image:
+    """Put the foreground layer of a Glory theme icon on the shared plate, in place of its light background.
+
+    invert: flip grey-black parts (clock hands, remote body) to light so they read on the plate
+    flatten: make see-through black parts (the brush handle) opaque in the grey they show on Glory's white plate
+    band: keep the coloured parts of the background (the calendar's red header)
+    tint: colour a pale glyph with its background colour (Phone and Contacts green, App Market blue)
+    """
+    fg, bg = adaptive_layer(fg_path), adaptive_layer(bg_path)
+    rgb = fg[..., :3]
+    if fix == 'invert':
+        mx, mn = rgb.max(2), rgb.min(2)
+        grey = np.clip(1 - (mx - mn - 20) / 20, 0, 1)[..., None]
+        fg[..., :3] = rgb * (1 - grey) + (255 - rgb) * grey
+    elif fix == 'tint':
+        col = bg[..., :3][bg[..., 3] > 250].mean(0) * 1.1
+        fg[..., :3] = np.clip(col * (rgb.mean(2, keepdims=True) / 255) ** 0.5, 0, 255)
+    elif fix == 'flatten':
+        a = fg[..., 3:4] / 255
+        cov = np.clip(a / 0.5, 0, 1)  # the handle is black at about 0.55 alpha
+        # its look on white, with the white at the anti-aliased edges taken back out
+        fg[..., :3] = (rgb * a + 255 * (1 - a) - 255 * (1 - cov)) / np.maximum(cov, 1e-3)
+        fg[..., 3:4] = cov * 255
+    out = PLATE.copy()
+    if fix == 'band':
+        mx, mn = bg[..., :3].max(2), bg[..., :3].min(2)
+        bg[..., 3] *= np.clip((mx - mn - 40) / 40, 0, 1)
+        over(out, bg)
+    over(out, fg)
+    out[..., 3] = MASK * 255
+    img = Image.fromarray(np.clip(out, 0, 255).astype(np.uint8))
+    if glare:
+        img.alpha_composite(BORDER)
+    return img

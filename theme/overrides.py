@@ -1,6 +1,6 @@
 """Per-app cutout and placement settings. Apps without an entry use App() (or GOOGLE for data/google)."""
 
-from .unify import App
+from .unify import App, GloryFix
 
 # data/google holds Google's redesigned icons on white
 GOOGLE = App(key='outside', bg=(255, 255, 255), recolor=None, frac=0.72)
@@ -35,7 +35,6 @@ OVERRIDES: dict[str, App] = {
     'com.google.android.googlequicksearchbox': App(recolor=None, frac=0.72),
     'com.grabtaxi.passenger': App(recolor=None),
     'com.gsm.customer': App(recolor=None),
-    'com.hihonor.appmarket': App(key='white', recolor=(70, 150, 255), frac=0.74),
     'com.inbody2014.inbody': App(recolor=None),
     'com.instagram.android': App(key='white', recolor='field'),
     'com.larksuite.suite': App(recolor=None),
@@ -77,4 +76,15 @@ OVERRIDES: dict[str, App] = {
     'vn.com.vng.zalopay': App(recolor=None, lift=True),
     'xyz.be.cake': App(recolor=None),
     'xyz.be.customer': App(recolor=None),
+}
+
+# data/glory: per-app fixes for icons from Honor's Glory theme, see from_glory
+GLORY: dict[str, GloryFix] = {
+    'com.android.contacts.activities.DialtactsActivity': 'tint',
+    'com.hihonor.android.remotecontroller': 'invert',
+    'com.hihonor.android.thememanager': 'flatten',
+    'com.hihonor.appmarket': 'tint',
+    'com.hihonor.calendar': 'band',
+    'com.hihonor.contacts': 'tint',
+    'com.hihonor.deskclock': 'invert',
 }

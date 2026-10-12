@@ -5,7 +5,7 @@ Two dark icon themes for Honor phones running MagicOS:
 - **Dark Glare** has a glare rim baked into every icon.
 - **Dark Flat** is the same set without the glare.
 
-Every icon sits on one shared dark plate, so third-party apps match the stock Honor and Google icons. The pack covers 107 apps, mostly ones common in Vietnam (banks, Zalo, MoMo, Grab, Shopee) plus Google, Honor and a handful of open-source tools.
+Every icon sits on one shared dark plate, so third-party apps match the stock Honor and Google icons. The pack covers 106 apps, mostly ones common in Vietnam (banks, Zalo, MoMo, Grab, Shopee) plus Google, Honor and a handful of open-source tools. Honor's own apps use the glyphs from Honor's built-in Glory theme.
 
 ## Install
 
@@ -80,7 +80,8 @@ Each app has exactly one source image, `<package>.png` (or `.webp`), in one of t
 
 | Folder | Source | Processing |
 | --- | --- | --- |
-| `data/orig/` | stock Honor and Google pack icons | kept as-is, only the plate and rim are swapped for the shared ones |
+| `data/glory/` | foreground (`<package>.png`) and background (`<package>.bg.png`) layers from Honor's Glory theme | the foreground goes on the shared plate; per-app fixes are in `overrides.py` |
+| `data/orig/` | stock pack icons of GmsCore and Google Files | kept as-is, only the plate and rim are swapped for the shared ones |
 | `data/pack/` | stock pack icons of other apps | the glyph is lifted off its plate and re-centred |
 | `data/google/` | Google's 2025-2026 redesigned icons | the white background is removed |
 | `data/store/` | Google Play icons | the glyph is cut out of the background |
