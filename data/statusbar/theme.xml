@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- The Themes app merges this module into com.android.systemui without a night/ entry, so SystemUI takes the theme as
+     light-only: it turns transparent mode off and draws notifications and Control Center in light colours. White here
+     tells SystemUI the theme supports transparent mode (TransparentModeManager.getTransparentModeState), which keeps
+     the stock look. -->
+<resources>
+  <color name="hn_special_transparent_mode_color">#FFFFFFFF</color>
+</resources>

@@ -11,7 +11,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from . import mockup, previews
+from . import mockup, previews, statusbar
 from .overrides import GLORY, GOOGLE, OVERRIDES
 from .paths import APPS, BUILD, DATA, DIST
 from .unify import App, compose, from_glory, from_orig, from_pack, from_store, layers
@@ -78,6 +78,7 @@ def pack(v: str) -> None:
     previews.wallpapers(outer / 'wallpaper')
     (outer / 'preview').mkdir()
     previews.render(v, outer / 'preview')
+    statusbar.build(outer / statusbar.MODULE)
     # `icons` is a deflated zip without an extension, stored inside the outer zip
     with zipfile.ZipFile(outer / 'icons', 'w', zipfile.ZIP_DEFLATED) as zf:
         for c in sorted(icons.iterdir()):
@@ -85,7 +86,7 @@ def pack(v: str) -> None:
     DIST.mkdir(exist_ok=True)
     hnt = DIST / f'{title.replace(" ", "-")}-Honor.hnt'
     with zipfile.ZipFile(hnt, 'w', zipfile.ZIP_STORED) as zf:
-        for rel in ('unlock', 'wallpaper', 'description.xml', 'icons', 'preview'):
+        for rel in ('unlock', 'wallpaper', 'description.xml', 'icons', statusbar.MODULE, 'preview'):
             zipdir(zf, outer, rel)
     with zipfile.ZipFile(hnt) as zf:
         assert zf.testzip() is None
