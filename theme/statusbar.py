@@ -1,4 +1,4 @@
-"""Status bar icons, packed as the com.android.systemui.status module.
+"""Status bar icons, packed as the com.android.systemui module.
 
 The module is a zip of res/drawable-xxhdpi/<name>.png; each PNG replaces the SystemUI drawable of that name. The
 names follow Honor's official theme 荣耀机器人. Every canvas has the size of the stock drawable's viewport
@@ -6,8 +6,12 @@ names follow Honor's official theme 荣耀机器人. Every canvas has the size o
 follows the stock SystemUI vectors, since several drawables are stacked in one view (signal bars + network type + in/out
 arrows, battery frame + level + charge bolt). SystemUI tints the glyphs, so they are black on transparent; only the low
 battery levels keep their own colour. Glyphs are Material Symbols Rounded (Apache 2.0, data/statusbar), text is Inter
-Display Bold (OFL, data/inter). The module's theme.xml keeps SystemUI in its stock (transparent) style, so
-notifications and Control Center stay dark.
+Display Bold (OFL, data/inter).
+
+The module is com.android.systemui rather than com.android.systemui.status: the Themes app merges a .status module
+into a com.android.systemui zip without a night/ entry, and SystemUI then takes the theme as light-only
+(FullScreenAodNotificationControllerImpl.checkTheme) and draws notifications, dialogs and the screenshot UI light in
+dark mode. The night/ entry here is what checkTheme looks for.
 """
 
 import io
@@ -29,7 +33,7 @@ S = 4  # supersampling
 H = 60  # every icon is 60px tall (20dp at xxhdpi)
 DIM = 0.3  # the unlit part of a meter, as in the stock vectors (fillAlpha 0.3)
 LOW, CRITICAL = (0xFF, 0x9B, 0x1A), (0xF5, 0x48, 0x42)  # SystemUI's low battery colours (<= 20%, <= 10%)
-MODULE = 'com.android.systemui.status'
+MODULE = 'com.android.systemui'
 # name -> (w, h) of the stock drawable
 SIZES = {
     n: (float(w), float(h))
@@ -562,8 +566,10 @@ def build(dst: Path) -> None:
     with zipfile.ZipFile(dst, 'w', zipfile.ZIP_DEFLATED) as zf:
         zf.writestr('res/', '')
         zf.writestr('res/drawable-xxhdpi/', '')
-        # without it SystemUI turns light whenever a theme replaces its resources, see the file
         zf.write(DATA / 'statusbar/theme.xml', 'theme.xml')
+        # SystemUI only checks for this exact entry; night/theme.xml is empty, so dark mode uses the root values too
+        zf.writestr('night/', '')
+        zf.writestr('night/theme.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<resources />\n')
         for name, im in sorted(icons().items()):
             im.save(res / f'{name}.png')
             buf = io.BytesIO()
