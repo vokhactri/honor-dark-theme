@@ -78,7 +78,7 @@ def pack(v: str) -> None:
     previews.wallpapers(outer / 'wallpaper')
     (outer / 'preview').mkdir()
     previews.render(v, outer / 'preview')
-    statusbar.build(outer / statusbar.MODULE)
+    statusbar.build(outer)
     fingerprint.build(outer, title)
     charging.build(outer)
     # `icons` is a deflated zip without an extension, stored inside the outer zip
@@ -93,7 +93,7 @@ def pack(v: str) -> None:
             'wallpaper',
             'description.xml',
             'icons',
-            statusbar.MODULE,
+            *statusbar.MODULES,
             *fingerprint.MODULES,
             'charging',
             'preview',

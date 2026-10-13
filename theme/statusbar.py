@@ -1,4 +1,4 @@
-"""Status bar icons, packed as the com.android.systemui module.
+"""Status bar icons, packed as the com.android.systemui.status module.
 
 The module is a zip of res/drawable-xxhdpi/<name>.png; each PNG replaces the SystemUI drawable of that name. The
 names follow Honor's official theme 荣耀机器人. Every canvas has the size of the stock drawable's viewport
@@ -8,10 +8,12 @@ arrows, battery frame + level + charge bolt). SystemUI tints the glyphs, so they
 battery levels keep their own colour. Glyphs are Material Symbols Rounded (Apache 2.0, data/statusbar), text is Inter
 Display Bold (OFL, data/inter).
 
-The module is com.android.systemui rather than com.android.systemui.status: the Themes app merges a .status module
-into a com.android.systemui zip without a night/ entry, and SystemUI then takes the theme as light-only
+The icons go in com.android.systemui.status, as in 荣耀机器人, which the Themes app merges into com.android.systemui
+when the theme is applied. Shipped directly in com.android.systemui, every icon showed except the battery: SystemUI
+kept the stock battery whatever the theme had (MagicOS 11). com.android.systemui itself carries theme.xml and an
+empty night/ entry: without that entry SystemUI takes the theme as light-only
 (FullScreenAodNotificationControllerImpl.checkTheme) and draws notifications, dialogs and the screenshot UI light in
-dark mode. The night/ entry here is what checkTheme looks for.
+dark mode. On SDK 37 the merge keeps it.
 """
 
 import io
@@ -24,6 +26,7 @@ import numpy as np
 import numpy.typing as npt
 import resvg_py
 from PIL import Image, ImageDraw, ImageFont
+from scipy import ndimage
 
 from .paths import BUILD, DATA
 
@@ -33,7 +36,7 @@ S = 4  # supersampling
 H = 60  # every icon is 60px tall (20dp at xxhdpi)
 DIM = 0.3  # the unlit part of a meter, as in the stock vectors (fillAlpha 0.3)
 LOW, CRITICAL = (0xFF, 0x9B, 0x1A), (0xF5, 0x48, 0x42)  # SystemUI's low battery colours (<= 20%, <= 10%)
-MODULE = 'com.android.systemui'
+MODULES = ('com.android.systemui', 'com.android.systemui.status')  # theme.xml + night/, the icons
 # name -> (w, h) of the stock drawable
 SIZES = {
     n: (float(w), float(h))
@@ -55,10 +58,6 @@ def draw(m: Mask, fn: Callable[[ImageDraw.ImageDraw], None]) -> Mask:
 def rrect(m: Mask, box: tuple[float, float, float, float], r: float) -> Mask:
     x0, y0, x1, y1 = (v * S for v in box)
     return draw(m, lambda d: d.rounded_rectangle((x0, y0, x1, y1), r * S, fill=255))
-
-
-def poly(m: Mask, pts: list[tuple[float, float]]) -> Mask:
-    return draw(m, lambda d: d.polygon([(x * S, y * S) for x, y in pts], fill=255))
 
 
 def over(*layers: tuple[Mask, float]) -> Mask:
@@ -172,22 +171,24 @@ def fit(name: str, w: float, h: float = H) -> Mask:
 # --- mobile signal: bars on the right of an 80px canvas, network type top left, in/out arrows bottom left
 
 
-BAR_BOTTOM, BAR_TOP = 52, 10
+type Box = tuple[float, float, float, float]
+
+# The stock bars (MagicOS 11 vectors): (left, top, width), all to the same bottom
+BARS4 = [(32.5, 39, 7), (43.25, 33.88, 7), (54.12, 28.62, 7), (65, 18.88, 7)]  # bottom 52, 80px canvas
+NULL5 = [(8 + 10 * i, 43 - 9 * i, 6) for i in range(4)] + [(48, 8, 6)]  # bottom 52, no service, 62px canvas
 
 
-def bars(n: int, lit: int, w: float = 80, x0: float | None = None, x1: float | None = None) -> Mask:
-    """n rounded bars, the first lit ones opaque: 4 bars at x 32..72 of 80px, 5 at 18..78 of 86px, as in stock."""
+def bars5(w: float) -> list[tuple[float, float, float]]:
+    """5 bars ending 8px from the right edge (x 18..78 of 86px, 12..72 of the 80px _small), bottom 50."""
+    return [(w - 68 + 13 * i, 41 - 7 * i, 8) for i in range(5)]
+
+
+def bars(layout: list[tuple[float, float, float]], lit: int, w: float = 80, bottom: float = 52) -> Mask:
+    """Bars at the stock positions with Material's fully rounded ends, the first lit ones opaque."""
     m = blank(w)
-    x0 = x0 if x0 is not None else 32 if n == 4 else 18
-    x1 = x1 if x1 is not None else 72 if n == 4 else 78
-    bw = 7.5 if n == 4 else 7.6
-    gap = (x1 - x0 - n * bw) / (n - 1)
-    layers = []
-    for i in range(n):
-        x = x0 + i * (bw + gap)
-        top = BAR_BOTTOM - (BAR_BOTTOM - BAR_TOP) * (i + 1) / n
-        layers.append((rrect(m, (x, top, x + bw, BAR_BOTTOM), bw / 2), 1.0 if i < lit else DIM))
-    return over(*layers)
+    return over(
+        *[(rrect(m, (x, t, x + bw, bottom), bw / 2), 1.0 if i < lit else DIM) for i, (x, t, bw) in enumerate(layout)]
+    )
 
 
 @cache
@@ -215,6 +216,15 @@ def text(m: Mask, s: str, x: float, cap_top: float, cap: float) -> tuple[Mask, f
             d.text((cx, base), c, font=f, fill=255, anchor='ls')
 
     return draw(m, run), (xs[-1] + f.getlength(s[-1])) / S
+
+
+def fitted(m: Mask, s: str, x: float, cap_top: float, cap: float) -> Mask:
+    """text(), with the cap height shrunk until the ink ends 1px short of the canvas's right edge, as in stock."""
+    while True:
+        a = text(m, s, x, cap_top, cap)[0]
+        if not a[:, -S:].any():
+            return a
+        cap -= 0.25
 
 
 def label(main: str, sup: str = '', w: float = 80) -> Mask:
@@ -293,41 +303,46 @@ def roam(w: float) -> Mask:
 
 
 def arrows(w: float, x: float, up: float, down: float) -> Mask:
-    """Data activity: an up and a down triangle stacked at x (as in the stock vectors), with these alphas."""
+    """Data activity: Material's arrow_drop_up and arrow_drop_down in the stock triangles' 9.75px boxes at x."""
     m = blank(w)
-    tri_up = poly(m, [(x, 42.5), (x + 9.4, 42.5), (x + 4.7, 37)])
-    tri_down = poly(m, [(x, 44.5), (x + 9.4, 44.5), (x + 4.7, 50)])
+    tri_up = paste(m, symbol('arrow_drop_up', w=9.75), x + 4.875, 39.625)
+    tri_down = paste(m, symbol('arrow_drop_down', w=9.75), x + 4.875, 47.375)
     return over((tri_up, up), (tri_down, down))
 
 
-# --- wifi: Material's wedge, dim, with the lit part a sector from the bottom point
+def bang(m: Mask, box: Box, dot: float) -> Mask:
+    """An exclamation mark: a pill over box and a round dot below it, dot px across, as Material draws them."""
+    x0, y0, x1, y1 = box
+    r = (x1 - x0) / 2
+    cx = x0 + r
+    d = draw(m, lambda dr: dr.ellipse(((cx - dot / 2) * S, y1 * S, (cx + dot / 2) * S, (y1 + dot) * S), fill=255))
+    return np.maximum(d, rrect(m, (x0, y0, x1, y1 - 2), r))
 
 
-WIFI_LEVELS = (0, 0.45, 0.64, 0.82, 1)  # lit radius per level, as a fraction of the wedge height
+# --- wifi: Material's android_wifi_4_bar (a dot and three arcs) in the stock glyph's box, lit from the dot up
+
+
+WIFI_BOX = (7, 9, 65.62, 50.62)  # the stock glyph, the same in the 71 and 73px canvases
 
 
 @cache
-def wedge(w: float) -> tuple[Mask, float, float]:
-    """The full wedge 58px wide, centred in a w px canvas with its bottom at y=51; also its bottom and height."""
-    g = symbol('signal_wifi_4_bar', w=58)
-    m = blank(w)
-    h = g.shape[0] / S
-    return paste(m, g, w / 2, 51 - h / 2), 51, h
+def arcs(w: float) -> list[Mask]:
+    """The glyph's parts, dot first; each antialiased edge pixel goes to the nearest part."""
+    x0, y0, x1, y1 = WIFI_BOX
+    m = paste(blank(w), symbol('android_wifi_4_bar', h=y1 - y0), (x0 + x1) / 2, (y0 + y1) / 2)
+    lab, n = ndimage.label(m > 0.5)
+    near = ndimage.distance_transform_edt(lab == 0, return_indices=True)[1]
+    lab = lab[near[0], near[1]]
+    parts = [m * (lab == i) for i in range(1, n + 1)]
+    return sorted(parts, key=lambda p: -np.nonzero(p.any(1))[0][0])
 
 
 def wifi(level: int, w: float) -> Mask:
-    m, bottom, h = wedge(w)
-    r = WIFI_LEVELS[level] * (h + 2)
-    cx = w / 2
-    disk = draw(m, lambda d: d.ellipse(((cx - r) * S, (bottom - r) * S, (cx + r) * S, (bottom + r) * S), fill=255))
-    return over((m, DIM), (m * disk, 1.0))
+    return over(*[(p, 1.0 if i < level else DIM) for i, p in enumerate(arcs(w))])
 
 
 def no_internet() -> Mask:
-    m = blank(71)
-    bar = rrect(m, (59, 31, 63, 45), 2)
-    dot = draw(m, lambda d: d.ellipse((59 * S, 47 * S, 63 * S, 51 * S), fill=255))
-    return np.maximum(bar, dot)
+    return bang(blank(71), (58, 30.5, 63, 45.5), 5)  # the stock mark: 58..63, bar to 43.5, dot 45.5..50.5
 
 
 # --- battery: an outline with a level bar inside. The outline is as big as the stock battery (y 8..52), because
@@ -335,10 +350,15 @@ def no_internet() -> Mask:
 
 
 BATT_W = 104
-BODY = (6.0, 8.0, 94.0, 52.0)  # outer edge of the outline, without the nub
-STROKE = 3.6
-INSET = 2.4  # gap between the outline and the level bar
-RADIUS = 12.0
+# The stock layout: body, a separate nub, and the level bar 8px inside the body. Drawn with Material's
+# battery_android_frame_*: a 2U outline (U px per 1/24 of the pictograms' box), corners a quarter of the height,
+# the level concentric with them, the nub flat on the body side and rounded outside
+BODY = (10.0, 8.0, 89.0, 52.0)  # outer edge of the outline
+NUB = (92.0, 22.0, 98.0, 38.0)
+U = EM / 24
+STROKE = 2 * U
+INSET = 8 - STROKE  # gap between the outline and the level bar
+RADIUS = (BODY[3] - BODY[1]) / 4
 BODY_CX = (BODY[0] + BODY[2]) / 2
 
 
@@ -350,7 +370,7 @@ def frame() -> Mask:
     nub = draw(
         m,
         lambda d: d.rounded_rectangle(
-            ((x1 + 1.5) * S, 23 * S, (x1 + 6) * S, 37 * S), 2.5 * S, fill=255, corners=(False, True, True, False)
+            tuple(v * S for v in NUB), (NUB[2] - NUB[0]) * 2 / 3 * S, fill=255, corners=(False, True, True, False)
         ),
     )
     return np.maximum(outer * (1 - inner), nub)
@@ -363,13 +383,96 @@ def level(pct: int) -> Mask:
     return rrect(blank(BATT_W), (x0, y0, x0 + w, y1), min(RADIUS - e, w / 2))
 
 
-def bolts(w: float, n: int, h: float, cx: float, step: float, down: bool = False) -> Mask:
-    """n bolts h px tall, step px apart side by side (or stacked if down), centred on (cx, H/2)."""
-    g = symbol('bolt', h=h)
-    out = blank(w)
-    for i in range(n):
-        d = (i - (n - 1) / 2) * step
-        out = np.maximum(out, paste(out, g, cx, H / 2 + d) if down else paste(out, g, cx + d, H / 2))
+# --- charge bolts: Material has no zigzag bolt like Honor's fast and super fast ones, so every bolt is Honor's own
+# shape (data/statusbar/honor, extracted from the MagicOS 11 vectors) with its corners rounded as Material Symbols
+# Rounded rounds them
+
+
+ROUND = 1.2  # corner radius, px: Material's rounded corners at the pictograms' scale
+BOLTS = [
+    f'ic_statusbar_battery_{n}'
+    for n in (
+        'charge',
+        'charge_double',
+        'supercharge',
+        'charge_figure',
+        'charge_double_figure',
+        'supercharge_figure',
+        *(f'charge{k}{s}_v1' for k in ('', '_fast', '_super_fast') for s in ('', '_single', '_hollow')),
+        *(f'charge{k}_hollow_transparent_back_v1' for k in ('', '_fast', '_super_fast')),
+    )
+]
+
+
+def rounded(m: Mask, r: float = ROUND) -> Mask:
+    """m with its convex corners rounded to r px (an opening) and its concave ones to r/2 (a closing)."""
+
+    def grow(a: Mask, by: float) -> Mask:
+        return np.clip(by * S + 0.5 - ndimage.distance_transform_edt(a < 0.5), 0, 1)
+
+    opened = grow(grow(1 - m, r) < 0.5, r)
+    return 1 - grow(grow(opened, r / 2) < 0.5, r / 2)
+
+
+@cache
+def honor(name: str) -> Mask:
+    """A stock shape from data/statusbar/honor, rendered at its viewport size and rounded."""
+    svg = DATA / f'statusbar/honor/{name}.svg'
+    w, h = SIZES[name]
+    png_ = resvg_py.svg_to_bytes(svg_path=str(svg), width=round(w * S), height=round(h * S))
+    return rounded(np.asarray(Image.open(io.BytesIO(bytes(png_))).getchannel('A')) / 255)
+
+
+# --- battery, the new style (_v1). SystemUI uses it unless a theme replaces only the old drawables; Honor's
+# HwBatteryManager.checkThemeBatteryIconStyle. Two looks: a solid battery with the level cut from it and the
+# percentage drawn inside by SystemUI (*_full_v1, charge_*_v1 next to the number), or an outline with a level bar
+# (border_hollow_v1, *_v1, charge_*_hollow_v1). The stock layout, drawn like the old style above
+
+
+BODY_V1 = (10.0, 8.0, 90.5, 52.0)
+NUB_V1 = (93.5, 23.0, 98.0, 37.0)
+LEVEL_V1 = (16.0, 14.0, 84.5, 46.0)  # the hollow style's level bar at 100%
+RADIUS_V1 = (BODY_V1[3] - BODY_V1[1]) / 4
+
+
+def nub_v1(m: Mask) -> Mask:
+    r = (NUB_V1[2] - NUB_V1[0]) * 2 / 3
+    return draw(
+        m,
+        lambda d: d.rounded_rectangle(
+            tuple(v * S for v in NUB_V1), r * S, fill=255, corners=(False, True, True, False)
+        ),
+    )
+
+
+def solid_v1(pct: int = 100) -> Mask:
+    """The solid battery, cut at pct of the body width (the nub only at 100)."""
+    m = blank(BATT_W)
+    body = rrect(m, BODY_V1, RADIUS_V1)
+    x = BODY_V1[0] + (BODY_V1[2] - BODY_V1[0]) * pct / 100
+    body[:, round(x * S) :] = 0
+    return np.maximum(body, nub_v1(m)) if pct == 100 else body
+
+
+def hollow_v1() -> Mask:
+    m = blank(BATT_W)
+    x0, y0, x1, y1 = BODY_V1
+    outer = rrect(m, BODY_V1, RADIUS_V1)
+    inner = rrect(m, (x0 + STROKE, y0 + STROKE, x1 - STROKE, y1 - STROKE), RADIUS_V1 - STROKE)
+    return np.maximum(outer * (1 - inner), nub_v1(m))
+
+
+def level_v1(pct: int) -> Mask:
+    x0, y0, x1, y1 = LEVEL_V1
+    w = (x1 - x0) * pct / 100
+    return rrect(blank(BATT_W), (x0, y0, x0 + w, y1), min(RADIUS_V1 - (x0 - BODY_V1[0]), w / 2))
+
+
+def battery_v1() -> dict[str, Mask]:
+    out = {'ic_statusbar_battery_v1': solid_v1(), 'ic_statusbar_battery_border_hollow_v1': hollow_v1()}
+    for pct in (5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 95, 100):
+        out[f'ic_statusbar_battery_{pct}_full_v1'] = solid_v1(pct)
+        out[f'ic_statusbar_battery_{pct}_v1'] = level_v1(pct)
     return out
 
 
@@ -377,19 +480,20 @@ def bolts(w: float, n: int, h: float, cx: float, step: float, down: bool = False
 
 
 def device(w: float, glyph: str, check: bool = False) -> Mask:
-    """The glyph fills the space left of the battery, whose outline sits at x = w-30..w-8 as in the stock vectors."""
+    """As in the stock vectors: a battery at x = w-30..w-8 with a separate nub, and the glyph in a 42px square
+    from x=10 (y 9..51). The battery has Material's rounded corners."""
     m = blank(w)
     x = w - 30
-    body = rrect(m, (x, 14.24, x + 22, 51.24), 7.6)
+    body = rrect(m, (x, 14.25, x + 22, 51.25), 22 / 4)
     nub = draw(
         m,
         lambda d: d.rounded_rectangle(
-            ((x + 7) * S, 9 * S, (x + 15) * S, 12.24 * S), 3.2 * S, fill=255, corners=(True, True, False, False)
+            ((x + 7) * S, 9.12 * S, (x + 15) * S, 12.25 * S), U * S, fill=255, corners=(True, True, False, False)
         ),
     )
-    g = symbol(glyph, h=36)
-    gx = x / 2  # centre of 4..x-4
-    out = over((np.maximum(body, nub), 0.5), (paste(m, g, gx, 31), 1.0))
+    g = _symbol(glyph, 42 * 24 / 20)  # Material's 20-unit live area fills the 42px square
+    gx = (10 + x - 6) / 2
+    out = over((np.maximum(body, nub), 0.5), (paste(m, g, gx, 30), 1.0))
     if check:
         out = badge(out, gx + g.shape[1] / S / 2 - 5, 45)
     return out
@@ -415,7 +519,7 @@ def standalone(glyph: str, w: float, check: bool = False) -> Mask:
 def tag(w: float, h: float, top: float, bottom: float, main: str, sup: str = '') -> Mask:
     """A rounded tag over the full width from top to bottom, with main (and a small raised sup) cut out of it."""
     m = blank(w, h)
-    box = rrect(m, (0, top, w, bottom), (bottom - top) * 0.22)
+    box = rrect(m, (0, top, w, bottom), 2 * U)  # the corners of Material's *_mobiledata_badge
     cap = (bottom - top) * 0.62
     while True:
         a, right = text(m, main, 0, 0, cap)
@@ -460,10 +564,8 @@ TAGS = {  # name: (canvas w, h, tag top, bottom, text)
 def ethernet_alert() -> Mask:
     """Ethernet without internet: the symbol moved left, an exclamation mark after it."""
     m = blank(53, 48)
-    g = paste(m, _symbol('settings_ethernet', EM * 48 / H), 22, 24)
-    bar = rrect(m, (46, 13, 50, 29), 2)
-    dot = draw(m, lambda d: d.ellipse((46 * S, 32 * S, 50 * S, 36 * S), fill=255))
-    return np.maximum(g, np.maximum(bar, dot))
+    g = paste(m, symbol('settings_ethernet', w=44.5), 24, 24)  # the stock glyph spans x 1.75..46.25, y 11..37
+    return np.maximum(g, bang(m, (49, 20, 53, 38), 4))  # the stock mark: 49..53, bar to 36, dot 40..44
 
 
 def digits(h: float, rows: list[tuple[str, float]]) -> Mask:
@@ -490,17 +592,17 @@ def icons() -> dict[str, Image.Image]:
 
     for lit in range(5):
         for suffix in ('', '_fully'):
-            out[f'stat_sys_signal_{lit}{suffix}'] = png(bars(4, lit))
+            out[f'stat_sys_signal_{lit}{suffix}'] = png(bars(BARS4, lit))
     for lit in range(6):
         for prefix in ('stat_sys_signal_five_', 'ic_statusbar_signal_tjt_'):
             for suffix in ('', '_fully', '_small'):
                 name = f'{prefix}{lit}{suffix}'
-                out[name] = png(bars(5, lit, w=width(name)))
+                out[name] = png(bars(bars5(width(name)), lit, w=width(name), bottom=50))
     for name, parts in LABELS.items():
         out[name] = png(label(*parts, w=width(name)))
     # a tiny standalone LTE+ (24 x 24 in stock)
     m = blank(24, 24)
-    out['stat_sys_data_fully_connected_lte_plus'] = png(text(m, 'LTE+', 1, 3, 8)[0])
+    out['stat_sys_data_fully_connected_lte_plus'] = png(fitted(m, 'LTE+', 1, 3, 8))
     for name, (w, h, top, bottom, parts) in TAGS.items():
         out[name] = png(tag(w, h, top, bottom, *parts))
     out['ic_statusbar_superscript_double_icon1'] = png(digits(36, [('1', 30)]))
@@ -508,19 +610,17 @@ def icons() -> dict[str, Image.Image]:
     out['ic_statusbar_superscript_icon1'] = png(digits(60, [('1', 50)]))
     out['ic_statusbar_superscript_icon2'] = png(digits(60, [('2', 50)]))
     out['ic_statusbar_superscript_icon_double'] = png(digits(60, [('1', 27), ('2', 50)]))
-    out['ic_statusbar_wifi_giga'] = png(text(blank(12, 63), 'G', 1, 8, 18)[0])
+    out['ic_statusbar_wifi_giga'] = png(fitted(blank(12, 63), 'G', 0, 8, 18))
     m = blank(62)
-    out['stat_sys_signal_five_null'] = png(
-        np.maximum(bars(5, 0, w=62, x0=16, x1=54), paste(m, symbol('close', h=11), 12, 14))
-    )
+    out['stat_sys_signal_five_null'] = png(np.maximum(bars(NULL5, 0, w=62), paste(m, symbol('close', w=16), 16, 16)))
     m = blank(26, 24)
-    out['stat_sys_wifi_signal_null'] = png(paste(m, symbol('signal_wifi_4_bar', w=24), 13, 12) * DIM)
+    out['stat_sys_wifi_signal_null'] = png(paste(m, symbol('signal_wifi_0_bar', w=25.12), 12.94, 11.94))
     for name in ('stat_sys_data_connected_roam', 'stat_sys_signal_type_roam'):
         out[name] = png(roam(width(name)))
-    out['stat_sys_signal_in'] = png(arrows(80, 6.8, DIM, 1))
-    out['stat_sys_signal_out'] = png(arrows(80, 6.8, 1, DIM))
-    out['stat_sys_signal_inout'] = png(arrows(80, 6.8, 1, 1))
-    out['single_stat_sys_signal_connected'] = png(arrows(80, 6.8, DIM, DIM))
+    out['stat_sys_signal_in'] = png(arrows(80, 6.62, DIM, 1))
+    out['stat_sys_signal_out'] = png(arrows(80, 6.62, 1, DIM))
+    out['stat_sys_signal_inout'] = png(arrows(80, 6.62, 1, 1))
+    out['single_stat_sys_signal_connected'] = png(arrows(80, 6.62, DIM, DIM))
     m = blank(67)
     out['stat_sys_signal_type_waiting'] = png(paste(m, symbol('hourglass_empty', h=18), 15, 17))
     m = blank(40, 40)
@@ -532,10 +632,10 @@ def icons() -> dict[str, Image.Image]:
         names += [f'stat_sys_wifi_signal_{lvl}_fully', f'stat_sys_charged_wifi_signal_{lvl}']
         for name in names:
             out[name] = png(wifi(lvl, width(name)))
-    out['stat_sys_wifi_in'] = png(arrows(71, 55.6, DIM, 1))
-    out['stat_sys_wifi_out'] = png(arrows(71, 55.6, 1, DIM))
-    out['stat_sys_wifi_inout'] = png(arrows(71, 55.6, 1, 1))
-    out['stat_sys_wifi_none'] = png(arrows(71, 55.6, DIM, DIM))
+    out['stat_sys_wifi_in'] = png(arrows(71, 52.62, DIM, 1))
+    out['stat_sys_wifi_out'] = png(arrows(71, 52.62, 1, DIM))
+    out['stat_sys_wifi_inout'] = png(arrows(71, 52.62, 1, 1))
+    out['stat_sys_wifi_none'] = png(arrows(71, 52.62, DIM, DIM))
     out['stat_sys_wifi_no_internet'] = png(no_internet())
     m = blank(73)
     out['stat_sys_wifi_hotspot'] = png(paste(m, symbol('wifi_tethering', h=16), 11, 45))
@@ -547,14 +647,10 @@ def icons() -> dict[str, Image.Image]:
         im = png(level(pct), rgb)
         for suffix in ('', '_charge', '_full', '_save'):
             out[f'ic_statusbar_battery_{pct}{suffix}'] = im
-    out['ic_statusbar_battery_charge'] = png(bolts(BATT_W, 1, 28, BODY_CX, 0))
-    out['ic_statusbar_battery_charge_double'] = png(bolts(BATT_W, 2, 24, BODY_CX, 15))
-    out['ic_statusbar_battery_supercharge'] = png(bolts(BATT_W, 3, 22, BODY_CX, 17))
-    out['ic_statusbar_battery_charge_figure'] = png(bolts(25, 1, 26, 12.5, 0))
-    out['ic_statusbar_battery_charge_double_figure'] = png(bolts(28, 2, 19, 14, 20, down=True))
-    out['ic_statusbar_battery_supercharge_figure'] = png(bolts(24, 3, 13, 12, 14, down=True))
+    out.update({name: png(honor(name)) for name in BOLTS})
     out['ic_statusbar_battery_powersaving'] = png(paste(blank(BATT_W), symbol('add', h=20), BODY_CX, 30))
     out['ic_statusbar_battery_powersaving_figurein'] = png(paste(blank(36), symbol('add', h=18), 18, 30))
+    out.update({name: png(m) for name, m in battery_v1().items()})
 
     for name, glyph, check in (
         ('ic_hnstatusbar_earphone_battery', 'headphones', False),
@@ -581,16 +677,18 @@ def icons() -> dict[str, Image.Image]:
 
 
 def build(dst: Path) -> None:
-    """Write the module zip to dst, and the PNGs to build/statusbar for review."""
+    """Write the two module zips into the directory dst, and the PNGs to build/statusbar for review."""
     res = BUILD / 'statusbar'
     res.mkdir(parents=True, exist_ok=True)
-    with zipfile.ZipFile(dst, 'w', zipfile.ZIP_DEFLATED) as zf:
-        zf.writestr('res/', '')
-        zf.writestr('res/drawable-xxhdpi/', '')
+    ui, status = MODULES
+    with zipfile.ZipFile(dst / ui, 'w', zipfile.ZIP_DEFLATED) as zf:
         zf.write(DATA / 'statusbar/theme.xml', 'theme.xml')
         # SystemUI only checks for this exact entry; night/theme.xml is empty, so dark mode uses the root values too
         zf.writestr('night/', '')
         zf.writestr('night/theme.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<resources />\n')
+    with zipfile.ZipFile(dst / status, 'w', zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr('res/', '')
+        zf.writestr('res/drawable-xxhdpi/', '')
         for name, im in sorted(icons().items()):
             im.save(res / f'{name}.png')
             buf = io.BytesIO()
@@ -599,5 +697,5 @@ def build(dst: Path) -> None:
 
 
 if __name__ == '__main__':
-    build(BUILD / MODULE)
+    build(BUILD)
     print(len(list((BUILD / 'statusbar').glob('*.png'))), 'icons')
