@@ -5,6 +5,8 @@ description = "Dark Glare and Dark Flat icon themes for Honor phones"
 requires-python = ">=3.14"
 # Pinned to the versions that rendered the approved icons. Newer releases can shift resampling and colours.
 dependencies = [
+    "av==19.0.1",
+    "lz4==4.4.5",
     "numpy==2.5.4",
     "pillow==12.3.0",
     "resvg-py==0.5.0",

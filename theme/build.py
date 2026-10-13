@@ -11,7 +11,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from . import fingerprint, mockup, previews, statusbar
+from . import charging, fingerprint, mockup, previews, statusbar
 from .overrides import GLORY, GOOGLE, OVERRIDES
 from .paths import APPS, BUILD, DATA, DIST
 from .unify import App, compose, from_glory, from_orig, from_pack, from_store, layers
@@ -80,6 +80,7 @@ def pack(v: str) -> None:
     previews.render(v, outer / 'preview')
     statusbar.build(outer / statusbar.MODULE)
     fingerprint.build(outer, title)
+    charging.build(outer)
     # `icons` is a deflated zip without an extension, stored inside the outer zip
     with zipfile.ZipFile(outer / 'icons', 'w', zipfile.ZIP_DEFLATED) as zf:
         for c in sorted(icons.iterdir()):
@@ -94,6 +95,7 @@ def pack(v: str) -> None:
             'icons',
             statusbar.MODULE,
             *fingerprint.MODULES,
+            'charging',
             'preview',
         ):
             zipdir(zf, outer, rel)
