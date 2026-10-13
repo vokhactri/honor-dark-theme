@@ -139,6 +139,27 @@ PICTOGRAMS = {
     'stat_sys_tty_mode': 'tty',
     'stat_sys_zen_important': 'bedtime',
     'stat_sys_zen_none': 'bedtime',
+    # MagicOS 11 scene modes (HnIconVectorDrawable, 16.25dp)
+    'stat_sys_zen_mode_date': 'calendar_month',
+    'stat_sys_zen_mode_default': 'sentiment_satisfied',
+    'stat_sys_zen_mode_draw': 'palette',
+    'stat_sys_zen_mode_drive': 'directions_car',
+    'stat_sys_zen_mode_exam': 'edit_document',
+    'stat_sys_zen_mode_family': 'home',
+    'stat_sys_zen_mode_flow': 'ecg_heart',
+    'stat_sys_zen_mode_game': 'sports_esports',
+    'stat_sys_zen_mode_lecture': 'co_present',
+    'stat_sys_zen_mode_movie': 'movie',
+    'stat_sys_zen_mode_music': 'music_note',
+    'stat_sys_zen_mode_personal': 'person',
+    'stat_sys_zen_mode_pet': 'pets',
+    'stat_sys_zen_mode_read': 'menu_book',
+    'stat_sys_zen_mode_sleep': 'bed',
+    'stat_sys_zen_mode_social': 'forum',
+    'stat_sys_zen_mode_speed_rail': 'train',
+    'stat_sys_zen_mode_sport': 'directions_run',
+    'stat_sys_zen_mode_theater': 'curtains',
+    'stat_sys_zen_mode_work': 'work',
 }
 EM = 50  # Material's 24-unit box, so a full-height glyph is about 42px
 
