@@ -1,7 +1,7 @@
 [project]
-name = "honor-dark-theme"
+name = "honor-themes"
 version = "1.6.0"
-description = "Dark Glare and Dark Flat icon themes for Honor phones"
+description = "Dark Flat and Liquid Glass icon themes for Honor phones"
 requires-python = ">=3.14"
 # Pinned to the versions that rendered the approved icons. Newer releases can shift resampling and colours.
 dependencies = [

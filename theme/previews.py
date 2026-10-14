@@ -11,8 +11,9 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
-from .paths import APPS, BUILD, DATA
-from .unify import flat
+from . import liquid
+from .liquid import drawn
+from .paths import APPS, DATA
 
 type IconFn = Callable[[str, int], Image.Image]
 
@@ -99,12 +100,12 @@ def wallpaper() -> Image.Image:
     return Image.fromarray(np.clip(np.round(img), 0, 255).astype(np.uint8))
 
 
-def view(w: int, h: int) -> Image.Image:
-    """The wallpaper as a w x h screen shows it: the centre crop at that aspect, scaled."""
-    cw = round(WALL * w / h) if w < h else WALL
-    ch = WALL if w < h else round(WALL * h / w)
-    x, y = (WALL - cw) // 2, (WALL - ch) // 2
-    return wallpaper().crop((x, y, x + cw, y + ch)).resize((w, h), Image.LANCZOS).convert('RGBA')
+def view(w: int, h: int, wall: Image.Image | None = None) -> Image.Image:
+    """The wallpaper (ours by default) as a w x h screen shows it: the centre crop at that aspect, scaled."""
+    wall = wall or wallpaper()
+    cw, ch = min(wall.width, round(wall.height * w / h)), min(wall.height, round(wall.width * h / w))
+    x, y = (wall.width - cw) // 2, (wall.height - ch) // 2
+    return wall.crop((x, y, x + cw, y + ch)).resize((w, h), Image.LANCZOS).convert('RGBA')
 
 
 def status_bar(img: Image.Image) -> None:
@@ -149,19 +150,25 @@ def home(img: Image.Image, icon: IconFn, pkgs: list[str], top: float = 300, step
 def render(variant: str, outdir: Path) -> None:
     """Write the cover, preview and thumbnail images for one variant into `outdir`."""
 
+    wall = Image.open(DATA / 'liquid/base/wallpaper/home_wallpaper_0.jpg') if variant == 'liquid' else wallpaper()
+    mask = liquid.ICONS / 'icon_mask.png' if variant == 'liquid' else DATA / 'system/icon_mask.png'
+
     @cache
-    def drawn(p: str) -> Image.Image:
-        return flat(Image.open(BUILD / f'out/{variant}/{p}.png'))
+    def big(p: str) -> Image.Image:
+        return drawn(variant, p)
 
     def icon(p: str, s: int) -> Image.Image:
-        return drawn(p).resize((s, s), Image.LANCZOS)
+        return big(p).resize((s, s), Image.LANCZOS)
+
+    def screen(w: int, h: int) -> Image.Image:
+        return view(w, h, wall)
 
     def save(img: Image.Image, name: str) -> None:
         img.convert('RGB').save(outdir / name, quality=92)
 
     # cover: the theme card in the list; a home screen with the clock on top
     cw, ch = 1080, 1920
-    img = view(cw, ch)
+    img = screen(cw, ch)
     d = ImageDraw.Draw(img)
     d.text((cw / 2, 300), TIME, fill='white', font=font(190, True), anchor='mm')
     d.text((cw / 2, 430), DATE, fill=(225, 225, 230), font=font(46), anchor='mm')
@@ -169,12 +176,12 @@ def render(variant: str, outdir: Path) -> None:
     save(img, 'cover.jpg')
 
     # big icons, no labels
-    img = view(W, H)
+    img = screen(W, H)
     place(img, icon, FEATURED, [310, 640, 970], 417, 437, 219)
     save(img, 'preview_icons_0.jpg')
 
     # home screen with search pill and dock
-    img = view(W, H)
+    img = screen(W, H)
     status_bar(img)
     home(img, icon, HOME)
     layer = Image.new('RGBA', img.size)
@@ -190,13 +197,13 @@ def render(variant: str, outdir: Path) -> None:
     allp = sorted(APPS, key=lambda p: APPS[p].lower())
     per = 28
     for i in range(0, len(allp), per):
-        img = view(W, H)
+        img = screen(W, H)
         status_bar(img)
         home(img, icon, allp[i : i + per], top=230, step=360)
         save(img, f'preview_icons_{2 + i // per}.jpg')
 
     # lock screen
-    img = view(W, H)
+    img = screen(W, H)
     status_bar(img)
     d = ImageDraw.Draw(img)
     d.text((W / 2, 256), DATE, fill=(230, 230, 235), font=font(54), anchor='mm')
@@ -224,7 +231,7 @@ def render(variant: str, outdir: Path) -> None:
     sheet.save(outdir / 'icon_thumbnail.png')
     for p in (PHONE, GALLERY, CAMERA):
         masked(p).save(outdir / f'{p}.png')
-    Image.open(DATA / 'system/icon_mask.png').save(outdir / 'icon_mask.png')
+    Image.open(mask).save(outdir / 'icon_mask.png')
 
 
 def wallpapers(outdir: Path) -> None:

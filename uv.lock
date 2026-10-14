@@ -29,7 +29,7 @@ wheels = [
 ]
 
 [[package]]
-name = "honor-dark-theme"
+name = "honor-themes"
 version = "1.6.0"
 source = { virtual = "." }
 dependencies = [

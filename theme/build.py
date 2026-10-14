@@ -1,4 +1,4 @@
-"""Build the icons and pack dist/Dark-Glare-Honor.hnt and dist/Dark-Flat-Honor.hnt.
+"""Build the icons and pack dist/Dark-Flat-Honor.hnt and dist/Liquid-Glass-Honor.hnt.
 
 uv run -m theme.build                  # every app
 uv run -m theme.build com.zing.zalo    # only these apps, reuse the rest from build/out
@@ -11,12 +11,14 @@ from pathlib import Path
 
 from PIL import Image
 
-from . import charging, fingerprint, mockup, previews, statusbar
+from . import charging, dynamic, fingerprint, liquid, mockup, previews, statusbar
 from .overrides import GLORY, GOOGLE, OVERRIDES
 from .paths import APPS, BUILD, DATA, DIST
 from .unify import App, compose, from_glory, from_orig, from_pack, from_store, layers
 
-VARIANTS = {'glare': 'Dark Glare', 'flat': 'Dark Flat'}
+VARIANTS = {'flat': 'Dark Flat', 'liquid': 'Liquid Glass'}
+# optional modules: Liquid Glass's live wallpaper and lock screen, the launcher's calendar colours
+EXTRA = ('livepaper.xml', 'livepaper_config.xml', 'lockscreen', 'com.hihonor.android.launcher')
 # where each app's source image lives, see the README
 SOURCES = ('web', 'glory', 'orig', 'pack', 'google', 'store')
 
@@ -29,22 +31,22 @@ def source(p: str) -> Path:
 
 
 def render(p: str) -> None:
-    """Write the foreground layer of <p>'s icon to build/out/<variant>/<p>.png for both variants."""
+    """Write the foreground layer of <p>'s Dark Flat icon to build/out/flat/<p>.png. Liquid Glass reuses its glyph,
+    or takes build/out/glass/<p>.png where that exists."""
     src = source(p)
     kind = src.parent.name
-    out = {v: BUILD / f'out/{v}/{p}.png' for v in VARIANTS}
+    out = BUILD / f'out/flat/{p}.png'
+    glass = BUILD / f'out/glass/{p}.png'
+    glass.unlink(missing_ok=True)
     if kind == 'glory':
-        for v, f in out.items():
-            from_glory(src, src.with_suffix('.bg.png'), GLORY.get(p), glare=v == 'glare').save(f)
-        return
-    if kind == 'orig':
-        for v, f in out.items():
-            from_orig(src, glare=v == 'glare').save(f)
-        return
-    app = OVERRIDES.get(p, GOOGLE if kind == 'google' else App())
-    fg = from_pack(src) if kind == 'pack' else from_store(src, app)
-    for v, f in out.items():
-        compose(fg, app, glare=v == 'glare').save(f)
+        from_glory(src, src.with_suffix('.bg.png'), GLORY.get(p)).save(out)
+    elif kind == 'orig':
+        from_orig(src).save(out)
+        # the Dark Flat icon keeps its dark plate, so Liquid Glass gets the glyph lifted off it
+        compose(from_pack(src), App()).save(glass)
+    else:
+        app = OVERRIDES.get(p, GOOGLE if kind == 'google' else App())
+        compose(from_pack(src) if kind == 'pack' else from_store(src, app), app).save(out)
 
 
 def zipdir(zf: zipfile.ZipFile, root: Path, rel: str) -> None:
@@ -58,24 +60,42 @@ def zipdir(zf: zipfile.ZipFile, root: Path, rel: str) -> None:
         zf.write(path, rel)
 
 
+def flat_icons(icons: Path) -> None:
+    """Dark Flat: launcher assets (mask, folder plate) from Glory, then one adaptive icon per app, as in Glory:
+    <package>/foreground.png on <package>/background.png"""
+    shutil.copytree(DATA / 'system', icons)
+    for p in sorted(APPS):
+        (icons / p).mkdir()
+        front, back = layers(Image.open(BUILD / f'out/flat/{p}.png'))
+        front.save(icons / p / 'foreground.png')
+        back.save(icons / p / 'background.png')
+
+
+def liquid_icons(icons: Path) -> None:
+    """Liquid Glass: its launcher assets and Honor app icons, then a flat <package>.png for every other app."""
+    shutil.copytree(liquid.ICONS, icons)
+    for p in sorted(APPS.keys() - liquid.HONOR):
+        liquid.glass(p).save(icons / f'{p}.png')
+
+
 def pack(v: str) -> None:
     title = VARIANTS[v]
     stage = BUILD / f'stage_{v}'
     shutil.rmtree(stage, ignore_errors=True)
     outer = stage / 'outer'
-    shutil.copytree(DATA / 'base', outer)
-    # launcher assets (mask, folder plate) from Glory, then one adaptive icon per app, as in Glory:
-    # <package>/foreground.png on <package>/background.png
-    icons = shutil.copytree(DATA / 'system', stage / 'icons')
-    for f in sorted((BUILD / f'out/{v}').glob('*.png')):
-        (icons / f.stem).mkdir()
-        front, back = layers(Image.open(f))
-        front.save(icons / f.stem / 'foreground.png')
-        back.save(icons / f.stem / 'background.png')
+    icons = stage / 'icons'
+    if v == 'liquid':
+        # Liquid Glass's wallpapers, live wallpaper, lock screen and launcher colours
+        shutil.copytree(DATA / 'liquid/base', outer)
+        liquid_icons(icons)
+    else:
+        shutil.copytree(DATA / 'base', outer)
+        previews.wallpapers(outer / 'wallpaper')
+        flat_icons(icons)
+        dynamic.build(icons, outer)
 
     desc = outer / 'description.xml'
     desc.write_text(desc.read_text().replace('{title}', title))
-    previews.wallpapers(outer / 'wallpaper')
     (outer / 'preview').mkdir()
     previews.render(v, outer / 'preview')
     statusbar.build(outer)
@@ -93,6 +113,7 @@ def pack(v: str) -> None:
             'wallpaper',
             'description.xml',
             'icons',
+            *(e for e in EXTRA if (outer / e).exists()),
             *statusbar.MODULES,
             *fingerprint.MODULES,
             'charging',
@@ -105,8 +126,8 @@ def pack(v: str) -> None:
 
 
 def main() -> None:
-    for v in VARIANTS:
-        (BUILD / f'out/{v}').mkdir(parents=True, exist_ok=True)
+    for d in ('flat', 'glass'):
+        (BUILD / f'out/{d}').mkdir(parents=True, exist_ok=True)
     for p in sys.argv[1:] or sorted(APPS):
         render(p)
     for v, title in VARIANTS.items():

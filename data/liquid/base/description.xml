@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<HnTheme>
+    <title>{title}</title>
+    <title-cn>{title}</title-cn>
+    <author>trivk</author>
+    <designer>Họa Tiếu</designer>
+    <screen>FHD</screen>
+    <version>8.0.3</version>
+    <font>Default</font>
+    <font-cn>默认</font-cn>
+    <briefInfo>Glass icons and live wallpaper from Họa Tiếu's Liquid Glass (HONOR Việt Nam), with the Dark Flat glyphs for other apps.</briefInfo>
+    <icon-show>true</icon-show>
+    <wallpaper_dependencies>
+        <min_feature_version>110000000</min_feature_version>
+    </wallpaper_dependencies>
+    <aod-mode-supported>global_only</aod-mode-supported>
+</HnTheme>

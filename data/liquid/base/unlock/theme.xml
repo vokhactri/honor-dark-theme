@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<HnTheme>
+  <item style="magazine" />
+  <item wallpaper="unlock_wallpaper_0.jpg" />
+  <ScreenGesture type="swipe" required="true" directions="left" />
+  <UseSysSmallTool required="true" />
+</HnTheme>

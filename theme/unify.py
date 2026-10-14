@@ -1,4 +1,4 @@
-"""Image work: cut the glyph out of a source icon, place it for the shared plate, add glare.
+"""Image work: cut the glyph out of a source icon and place it for the shared plate.
 
 Every icon is built as the foreground layer of an adaptive icon (S x S, covering the part the launcher shows);
 the shared plate is the background layer.
@@ -31,7 +31,6 @@ def _mask() -> Image.Image:
 
 
 MASK = np.asarray(_mask()).astype(float) / 255
-BORDER = Image.open(DATA / 'icon_border.png').convert('RGBA').resize((S, S), Image.LANCZOS)  # glare rim
 PROFILE = np.load(DATA / 'plate_profile.npy')  # vertical plate colour of the stock Google/Honor icons
 PLATE = np.dstack([np.broadcast_to(PROFILE[:, None, :], (S, S, 3)), MASK * 255])
 
@@ -85,7 +84,7 @@ def luma(x: Arr) -> Arr:
     return 0.3 * x[..., 0] + 0.59 * x[..., 1] + 0.11 * x[..., 2]
 
 
-def from_orig(path: StrPath, glare: bool = False) -> Image.Image:
+def from_orig(path: StrPath) -> Image.Image:
     """Keep a stock pack icon intact: only normalise its frame and rim. The whole icon, plate included, is the
     foreground."""
     a = trimmed(path)
@@ -100,16 +99,13 @@ def from_orig(path: StrPath, glare: bool = False) -> Image.Image:
     out[..., :3] = rgb * (1 - w[..., None]) + PLATE[..., :3] * w[..., None]
     out[..., :3] = match_plate(out[..., :3])
     out[..., 3] = MASK * 255
-    return finish(out, glare)
+    return finish(out)
 
 
-def finish(fg: Arr, glare: bool) -> Image.Image:
-    """Clip a foreground layer to the squircle and add the glare rim."""
+def finish(fg: Arr) -> Image.Image:
+    """Clip a foreground layer to the squircle."""
     fg[..., 3] = np.minimum(fg[..., 3], MASK * 255)
-    img = Image.fromarray(np.clip(fg, 0, 255).astype(np.uint8))
-    if glare:
-        img.alpha_composite(BORDER)
-    return img
+    return Image.fromarray(np.clip(fg, 0, 255).astype(np.uint8))
 
 
 def flat(fg: Image.Image) -> Image.Image:
@@ -159,7 +155,7 @@ def fill_nan(v: Arr) -> Arr:
 
 
 def from_pack(path: StrPath) -> Arr:
-    """Strip the dark plate (and baked-in glare) from an existing pack icon."""
+    """Strip the dark plate (and any baked-in rim) from an existing pack icon."""
     a = trimmed(path)
     rgb, al = a[..., :3], a[..., 3] / 255
     lum, sat = lum_sat(rgb)
@@ -354,7 +350,7 @@ def lift(fg: Arr, min_luma: float = 95, amount: float = 0.6) -> Arr:
     return fg
 
 
-def compose(fg: Arr, app: App, glare: bool) -> Image.Image:
+def compose(fg: Arr, app: App) -> Image.Image:
     """Centre the glyph at `app.frac` of the icon size, clip to the squircle."""
     frac, dx, dy = app.frac, app.dx, app.dy
     fgim = Image.fromarray((drop_specks(fg.copy()) if app.specks else fg).astype(np.uint8))
@@ -364,7 +360,7 @@ def compose(fg: Arr, app: App, glare: bool) -> Image.Image:
         k = frac * S / max(g.size)
         g = g.resize((max(1, round(g.width * k)), max(1, round(g.height * k))), Image.LANCZOS)
         layer.alpha_composite(g, ((S - g.width) // 2 + int(dx * S), (S - g.height) // 2 + int(dy * S)))
-    return finish(np.asarray(layer).astype(float), glare)
+    return finish(np.asarray(layer).astype(float))
 
 
 type GloryFix = Literal['invert', 'flatten', 'band', 'tint'] | None
@@ -386,7 +382,16 @@ def over(dst: Arr, src: Arr) -> None:
     dst[..., 3:4] = out * 255
 
 
-def from_glory(fg_path: StrPath, bg_path: StrPath, fix: GloryFix, glare: bool) -> Image.Image:
+def invert_greys(fg: Arr) -> Arr:
+    """Flip the grey-black parts of a layer to light, in place, keeping coloured parts."""
+    rgb = fg[..., :3]
+    mx, mn = rgb.max(2), rgb.min(2)
+    grey = np.clip(1 - (mx - mn - 20) / 20, 0, 1)[..., None]
+    fg[..., :3] = rgb * (1 - grey) + (255 - rgb) * grey
+    return fg
+
+
+def from_glory(fg_path: StrPath, bg_path: StrPath, fix: GloryFix) -> Image.Image:
     """Take the foreground layer of a Glory theme icon, for the shared plate in place of its light background.
 
     invert: flip grey-black parts (clock hands, remote body) to light so they read on the plate
@@ -397,9 +402,7 @@ def from_glory(fg_path: StrPath, bg_path: StrPath, fix: GloryFix, glare: bool) -
     fg, bg = adaptive_layer(fg_path), adaptive_layer(bg_path)
     rgb = fg[..., :3]
     if fix == 'invert':
-        mx, mn = rgb.max(2), rgb.min(2)
-        grey = np.clip(1 - (mx - mn - 20) / 20, 0, 1)[..., None]
-        fg[..., :3] = rgb * (1 - grey) + (255 - rgb) * grey
+        invert_greys(fg)
     elif fix == 'tint':
         col = bg[..., :3][bg[..., 3] > 250].mean(0) * 1.1
         fg[..., :3] = np.clip(col * (rgb.mean(2, keepdims=True) / 255) ** 0.5, 0, 255)
@@ -419,4 +422,4 @@ def from_glory(fg_path: StrPath, bg_path: StrPath, fix: GloryFix, glare: bool) -
         bg[..., 3] *= np.clip((mx - mn - 40) / 40, 0, 1)
         over(out, bg)
     over(out, fg)
-    return finish(out, glare)
+    return finish(out)
