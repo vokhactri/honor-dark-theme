@@ -12,7 +12,9 @@ from PIL import Image
 from .paths import BUILD, DATA
 from .unify import VIEW, flat
 
-ICONS = DATA / 'liquid/icons'  # Liquid Glass's Honor app icons and launcher assets
+# Liquid Glass's Honor app icons and launcher assets; Files (documentsui) has none there, so it takes the theme's
+# Files by Google icon
+ICONS = DATA / 'liquid/icons'
 SIZE = 218
 M = (SIZE - VIEW) // 2  # the plate's margin in the canvas
 HONOR = {f.stem for f in ICONS.glob('*.png') if f.stem.startswith(('com.', 'cn.', 'vn.'))}

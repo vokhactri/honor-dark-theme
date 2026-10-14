@@ -257,8 +257,12 @@ def keyed_alpha(app: App, rgb: Arr, al: Arr) -> Arr:
     raise ValueError(f'unknown key {app.key!r}')
 
 
-def from_store(path: StrPath, app: App) -> Arr:
-    """Lift the glyph off a store icon's background (colour-to-alpha against a fitted bg)."""
+def from_store(path: StrPath, app: App, bright: bool = True) -> Arr:
+    """Lift the glyph off a store icon's background (colour-to-alpha against a fitted bg).
+
+    bright: lift dark colours so they read on the dark plate (boost, app.lift); off for Liquid Glass's see-through
+    plate, where the wallpaper is behind the glyph
+    """
     bg, crop, recolor = app.bg, app.crop, app.recolor
     thr = 0.10  # colour distance below which a pixel counts as background
     im = Image.open(path).convert('RGBA')
@@ -290,7 +294,7 @@ def from_store(path: StrPath, app: App) -> Arr:
             bl, bs = (v[0, 0] for v in lum_sat(bgc[None, None]))
             achrom = np.mean(sat[g] < 0.18) > 0.6
             if achrom and bs > 0.3 and bl > 60:
-                recolor = tuple(boost(bgc))  # white/black glyph on brand colour
+                recolor = tuple(bgc)  # white/black glyph on brand colour
             elif achrom and np.median(lum[g]) < 90:
                 recolor = (235, 235, 235)  # dark glyph on light/neutral bg -> white
     if recolor == 'field':  # fill the glyph with the blurred background around it
@@ -299,13 +303,13 @@ def from_store(path: StrPath, app: App) -> Arr:
         den = ndi.gaussian_filter(w, 25)[..., None]
         col = np.where(alpha[..., None] > 0, np.clip(num / np.maximum(den, 1e-3) * 1.1, 0, 255), col)
     elif recolor is not None:
-        rc = boost(recolor)
+        rc = boost(recolor) if bright else np.array(recolor, float)
         shade = np.clip(lum / 255, 0, 1)[..., None]
-        bright = np.median(lum[g]) > 128 if g.any() else True
-        col = np.where(alpha[..., None] > 0, rc * ((0.6 + 0.4 * shade) if bright else 1.0), col)
+        pale = np.median(lum[g]) > 128 if g.any() else True
+        col = np.where(alpha[..., None] > 0, rc * ((0.6 + 0.4 * shade) if pale else 1.0), col)
     col = np.where(alpha[..., None] > 0, col, 0)
     fg = clean(np.dstack([col, alpha * 255]))
-    return lift(fg) if app.lift else fg
+    return lift(fg) if app.lift and bright else fg
 
 
 def components(m: npt.NDArray[np.bool_]) -> tuple[npt.NDArray[np.int32], npt.NDArray[np.int_], npt.NDArray]:

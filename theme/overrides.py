@@ -6,6 +6,7 @@ from .unify import App, GloryFix
 GOOGLE = App(key='outside', bg=(255, 255, 255), recolor=None, frac=0.72)
 
 OVERRIDES: dict[str, App] = {
+    'app.devswitch': App(specks=False),  # keep the dashed link between the antennae
     'app.revanced.android.youtube': App(recolor=None),
     'app.revanced.manager.flutter': App(frac=0.60),
     'com.alibaba.aliexpresshd': App(recolor=None),

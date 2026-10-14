@@ -86,7 +86,7 @@ data/
   statusbar/    Material Symbols Rounded glyphs (Apache 2.0), stock drawable sizes (sizes.tsv) and the module's theme.xml
   fingerprint/  the XANA symbol, recoloured white
   system/       launcher assets from Glory: icon_mask, icon_masks/ (corner styles), icon_folders/ and others
-  liquid/       from the Liquid Glass theme: icons/ (Honor app icons, glass plate, rim, dynamic clock, calendar and
+  liquid/       from the Liquid Glass theme: icons/ (Honor app icons, Files, glass plate, rim, dynamic clock, calendar and
                 weather icons) and base/ (wallpapers, live wallpaper, lock screen, launcher colours)
   plate_profile.npy  vertical colour gradient of the shared plate
 scripts/        helpers for making cutouts and checking icon sizes
@@ -97,7 +97,7 @@ Each app has exactly one source image, `<package>.png` (or `.webp`), in one of t
 | Folder | Source | Processing |
 | --- | --- | --- |
 | `data/glory/` | foreground (`<package>.png`) and background (`<package>.bg.png`) layers from Honor's Glory theme | the foreground goes on the shared plate; per-app fixes are in `overrides.py` |
-| `data/orig/` | stock pack icons of GmsCore and Google Files | kept as-is, only the plate and rim are swapped for the shared ones |
+| `data/orig/` | stock pack icon of Google Files | kept as-is, only the plate and rim are swapped for the shared ones |
 | `data/pack/` | stock pack icons of other apps | the glyph is lifted off its plate and re-centred |
 | `data/google/` | Google's 2025-2026 redesigned icons | the white background is removed |
 | `data/store/` | Google Play icons | the glyph is cut out of the background |

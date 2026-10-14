@@ -44,9 +44,13 @@ def render(p: str) -> None:
         from_orig(src).save(out)
         # the Dark Flat icon keeps its dark plate, so Liquid Glass gets the glyph lifted off it
         compose(from_pack(src), App()).save(glass)
+    elif kind == 'pack':
+        compose(from_pack(src), OVERRIDES.get(p, App())).save(out)
     else:
         app = OVERRIDES.get(p, GOOGLE if kind == 'google' else App())
-        compose(from_pack(src) if kind == 'pack' else from_store(src, app), app).save(out)
+        compose(from_store(src, app), app).save(out)
+        # Liquid Glass shows the wallpaper behind the glyph, so it keeps the colours Dark Flat lifts for its dark plate
+        compose(from_store(src, app, bright=False), app).save(glass)
 
 
 def zipdir(zf: zipfile.ZipFile, root: Path, rel: str) -> None:
