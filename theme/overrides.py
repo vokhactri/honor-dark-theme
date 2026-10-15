@@ -23,7 +23,7 @@ OVERRIDES: dict[str, App] = {
         key='white', wlo=80, whi=190, recolor=(245, 65, 66), frac=0.48, dx=-0.022, dy=0.025
     ),
     'com.facebook.katana': App(recolor=None),
-    'com.facebook.orca': App(key='outside', recolor=None),
+    'com.facebook.orca': App(recolor=None),
     'com.finx.vikki': App(recolor=None, frac=0.86, specks=False),
     'com.google.android.apps.authenticator2': App(recolor=None, frac=0.72),
     'com.google.android.apps.bard': App(recolor=None, frac=0.72),
@@ -37,7 +37,8 @@ OVERRIDES: dict[str, App] = {
     'com.grabtaxi.passenger': App(recolor=None),
     'com.gsm.customer': App(recolor=None),
     'com.inbody2014.inbody': App(recolor=None),
-    'com.instagram.android': App(key='white', recolor='field'),
+    'com.instagram.android': App(recolor=None),
+    'com.instagram.barcelona': App(recolor=None),
     'com.larksuite.suite': App(recolor=None),
     'com.lazada.android': App(recolor=None),
     'com.linkedin.android': App(recolor=None),
