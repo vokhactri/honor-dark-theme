@@ -21,7 +21,7 @@ type Color = Sequence[float] | npt.NDArray[np.floating]  # rgb 0..255
 type StrPath = str | PathLike[str]
 
 S = 512
-LAYER, VIEW = 294, 196  # adaptive layer size and the centre part the launcher shows (72 of 108 dp), as in Glory
+LAYER, VIEW = 294, 196  # adaptive layer size and the center part the launcher shows (72 of 108 dp), as in Glory
 
 
 def _mask() -> Image.Image:
@@ -31,7 +31,7 @@ def _mask() -> Image.Image:
 
 
 MASK = np.asarray(_mask()).astype(float) / 255
-PROFILE = np.load(DATA / 'plate_profile.npy')  # vertical plate colour of the stock Google/Honor icons
+PROFILE = np.load(DATA / 'plate_profile.npy')  # vertical plate color of the stock Google/Honor icons
 PLATE = np.dstack([np.broadcast_to(PROFILE[:, None, :], (S, S, 3)), MASK * 255])
 
 
@@ -39,17 +39,17 @@ PLATE = np.dstack([np.broadcast_to(PROFILE[:, None, :], (S, S, 3)), MASK * 255])
 class App:
     """How an app's glyph is cut out of its source image and placed on the plate."""
 
-    key: str | None = None  # cutout method for backgrounds colour-to-alpha can't handle, see keyed_alpha
-    recolor: Color | Literal['auto', 'field'] | None = 'auto'  # glyph colour; None keeps the source colours
-    bg: Color | None = None  # background colour to remove; fitted from the outer ring if None
+    key: str | None = None  # cutout method for backgrounds color-to-alpha can't handle, see keyed_alpha
+    recolor: Color | Literal['auto', 'field'] | None = 'auto'  # glyph color; None keeps the source colors
+    bg: Color | None = None  # background color to remove; fitted from the outer ring if None
     crop: tuple[float, float, float, float] | None = None  # fractional box to crop the source to first
-    holes: bool = False  # key='outside': also clear enclosed background-coloured gaps
+    holes: bool = False  # key='outside': also clear enclosed background-colored gaps
     wlo: float = 150  # key='white': min RGB channel ramp from transparent...
     whi: float = 230  # ...to opaque
     lift: bool = False  # brighten dark glyph pixels after the cutout
     specks: bool = True  # drop tiny parts before placing; False keeps small text (i dots, thin stems)
     frac: float = 0.70  # glyph size, as a fraction of the icon
-    dx: float = 0.0  # offset from centre, as a fraction of the icon
+    dx: float = 0.0  # offset from center, as a fraction of the icon
     dy: float = 0.0
 
 
@@ -85,13 +85,13 @@ def luma(x: Arr) -> Arr:
 
 
 def from_orig(path: StrPath) -> Image.Image:
-    """Keep a stock pack icon intact: only normalise its frame and rim. The whole icon, plate included, is the
+    """Keep a stock pack icon intact: only normalize its frame and rim. The whole icon, plate included, is the
     foreground."""
     a = trimmed(path)
     al = a[..., 3:4] / 255
     out = PLATE.copy()
     out[..., :3] = a[..., :3] * al + PLATE[..., :3] * (1 - al)
-    # baked rim highlight -> plate colour (fades out over the outer band)
+    # baked rim highlight -> plate color (fades out over the outer band)
     rgb = out[..., :3]
     mx, mn = rgb.max(2), rgb.min(2)
     halo = (mx - mn < 25) & (mx > PROFILE[:, None, :].max(2) + 6)
@@ -119,7 +119,7 @@ def flat(fg: Image.Image) -> Image.Image:
 
 def layers(fg: Image.Image) -> tuple[Image.Image, Image.Image]:
     """Adaptive icon layers like Glory's: the foreground in the middle VIEW px of a LAYER px canvas, and the plate
-    filling the whole background (its gradient runs over the shown part and holds its end colours beyond)."""
+    filling the whole background (its gradient runs over the shown part and holds its end colors beyond)."""
     m = (LAYER - VIEW) // 2
     front = Image.new('RGBA', (LAYER, LAYER))
     front.alpha_composite(fg.convert('RGBA').resize((VIEW, VIEW), Image.LANCZOS), (m, m))
@@ -142,7 +142,7 @@ def match_plate(rgb: Arr) -> Arr:
     d = np.abs(rgb - own[:, None, None]).max(2)
     w = np.clip(1 - (d - 4) / 12, 0, 1) * (mx - mn < 12)
     rgb = rgb + (w * (target - own)[:, None])[..., None]
-    # baked grey rim along the mask edge -> shared plate
+    # baked gray rim along the mask edge -> shared plate
     r = np.clip((28 - MASK_EDGE) / 8, 0, 1) * (mx - mn < 20)
     return rgb * (1 - r[..., None]) + PROFILE[:, None, :] * r[..., None]
 
@@ -163,7 +163,7 @@ def from_pack(path: StrPath) -> Arr:
     cand = (al < 0.5) | ((sat < 0.3) & (lum < 78)) | (edge & (sat < 0.3) & (lum < 175))
     cand |= (EDGE < S * 0.045) & (sat < 0.2)
     bgmask = touching_border(cand)
-    # local plate colour per row, from the plate pixels themselves
+    # local plate color per row, from the plate pixels themselves
     plate_px = bgmask & (al > 0.5) & ~edge
     pl = np.array([np.median(lum[y][plate_px[y]]) if plate_px[y].any() else np.nan for y in range(S)])
     pl = np.nan_to_num(fill_nan(pl), nan=25.0)
@@ -181,7 +181,7 @@ def from_pack(path: StrPath) -> Arr:
 
 
 def boost(color: Color, min_luma: float = 105) -> Arr:
-    """Lift dark brand colours so they still read on the dark plate."""
+    """Lift dark brand colors so they still read on the dark plate."""
     c: Arr = np.array(color, float)
     if luma(c) >= min_luma:
         return c
@@ -196,7 +196,7 @@ def boost(color: Color, min_luma: float = 105) -> Arr:
 
 
 def fit_bg(rgb: Arr, al: Arr) -> tuple[Arr, Arr]:
-    """Fit a linear colour field to the outer ring so gradient backgrounds are handled."""
+    """Fit a linear color field to the outer ring so gradient backgrounds are handled."""
     ring = np.zeros((S, S), bool)
     k = int(S * 0.06)
     ring[k : k + 8, k:-k] = ring[-k - 8 : -k, k:-k] = ring[k:-k, k : k + 8] = ring[k:-k, -k - 8 : -k] = True
@@ -212,7 +212,7 @@ def fit_bg(rgb: Arr, al: Arr) -> tuple[Arr, Arr]:
 
 
 def square(im: Image.Image) -> Image.Image:
-    """Pad to a square without stretching; pad with transparency or the edge colour."""
+    """Pad to a square without stretching; pad with transparency or the edge color."""
     w, h = im.size
     if w != h:
         a = np.asarray(im)
@@ -226,7 +226,7 @@ def square(im: Image.Image) -> Image.Image:
 
 
 def keyed_alpha(app: App, rgb: Arr, al: Arr) -> Arr:
-    """Glyph alpha for icons whose background a plain colour-to-alpha can't remove."""
+    """Glyph alpha for icons whose background a plain color-to-alpha can't remove."""
     lum, sat = lum_sat(rgb)
     match app.key:
         case 'white':  # keep only the white glyph
@@ -244,12 +244,12 @@ def keyed_alpha(app: App, rgb: Arr, al: Arr) -> Arr:
             alpha = np.where(outside, 0.0, 1.0)
             alpha[fringe] = np.clip(sat[fringe] / 0.6, 0, 1)
             return ndi.gaussian_filter(alpha, 0.7) * al
-        case 'outside':  # drop only the background connected to the border, keep same-colour parts inside
+        case 'outside':  # drop only the background connected to the border, keep same-color parts inside
             bgc = fit_bg(rgb, al)[1] if app.bg is None else np.array(app.bg, float)
             d = np.abs(rgb - bgc).max(2)
             soft = np.clip(d / 40, 0, 1) * (d > 8)
             alpha = np.where(touching_border((d < 40) | (al < 0.1)), soft, 1.0) * al
-            if app.holes:  # also clear enclosed bg-coloured gaps
+            if app.holes:  # also clear enclosed bg-colored gaps
                 lab, idx, sizes = components(d < 40)
                 gaps = np.isin(lab, idx[sizes > 0.003 * S * S])
                 alpha = np.where(gaps, np.minimum(alpha, soft), alpha)
@@ -258,13 +258,13 @@ def keyed_alpha(app: App, rgb: Arr, al: Arr) -> Arr:
 
 
 def from_store(path: StrPath, app: App, bright: bool = True) -> Arr:
-    """Lift the glyph off a store icon's background (colour-to-alpha against a fitted bg).
+    """Lift the glyph off a store icon's background (color-to-alpha against a fitted bg).
 
-    bright: lift dark colours so they read on the dark plate (boost, app.lift); off for Liquid Glass's see-through
+    bright: lift dark colors so they read on the dark plate (boost, app.lift); off for Liquid Glass's see-through
     plate, where the wallpaper is behind the glyph
     """
     bg, crop, recolor = app.bg, app.crop, app.recolor
-    thr = 0.10  # colour distance below which a pixel counts as background
+    thr = 0.10  # color distance below which a pixel counts as background
     im = Image.open(path).convert('RGBA')
     if crop:
         w, h = im.size
@@ -294,7 +294,7 @@ def from_store(path: StrPath, app: App, bright: bool = True) -> Arr:
             bl, bs = (v[0, 0] for v in lum_sat(bgc[None, None]))
             achrom = np.mean(sat[g] < 0.18) > 0.6
             if achrom and bs > 0.3 and bl > 60:
-                recolor = tuple(bgc)  # white/black glyph on brand colour
+                recolor = tuple(bgc)  # white/black glyph on brand color
             elif achrom and np.median(lum[g]) < 90:
                 recolor = (235, 235, 235)  # dark glyph on light/neutral bg -> white
     if recolor == 'field':  # fill the glyph with the blurred background around it
@@ -347,7 +347,7 @@ def drop_specks(fg: Arr) -> Arr:
 
 
 def lift(fg: Arr, min_luma: float = 95, amount: float = 0.6) -> Arr:
-    """Brighten dark-coloured glyph pixels so they read on the dark plate."""
+    """Brighten dark-colored glyph pixels so they read on the dark plate."""
     rgb = fg[..., :3]
     t = np.clip((min_luma - luma(rgb)) / min_luma, 0, 1)[..., None] * amount
     fg[..., :3] = rgb + (255 - rgb) * t * (fg[..., 3:4] > 0)
@@ -355,7 +355,7 @@ def lift(fg: Arr, min_luma: float = 95, amount: float = 0.6) -> Arr:
 
 
 def compose(fg: Arr, app: App) -> Image.Image:
-    """Centre the glyph at `app.frac` of the icon size, clip to the squircle."""
+    """Center the glyph at `app.frac` of the icon size, clip to the squircle."""
     frac, dx, dy = app.frac, app.dx, app.dy
     fgim = Image.fromarray((drop_specks(fg.copy()) if app.specks else fg).astype(np.uint8))
     layer = Image.new('RGBA', (S, S))
@@ -372,7 +372,7 @@ HANDLE = (139, 64, 29)  # Themes brush handle: orange-brown plastic, #8B401D
 
 
 def adaptive_layer(path: StrPath) -> Arr:
-    """Load an adaptive icon layer, cropped to the centre 2/3 the launcher shows (72 of 108 dp) and scaled to S."""
+    """Load an adaptive icon layer, cropped to the center 2/3 the launcher shows (72 of 108 dp) and scaled to S."""
     im = Image.open(path).convert('RGBA')
     c = round(im.width / 6)
     return np.asarray(im.crop((c, c, im.width - c, im.height - c)).resize((S, S), Image.LANCZOS)).astype(float)
@@ -386,27 +386,27 @@ def over(dst: Arr, src: Arr) -> None:
     dst[..., 3:4] = out * 255
 
 
-def invert_greys(fg: Arr) -> Arr:
-    """Flip the grey-black parts of a layer to light, in place, keeping coloured parts."""
+def invert_grays(fg: Arr) -> Arr:
+    """Flip the gray-black parts of a layer to light, in place, keeping colored parts."""
     rgb = fg[..., :3]
     mx, mn = rgb.max(2), rgb.min(2)
-    grey = np.clip(1 - (mx - mn - 20) / 20, 0, 1)[..., None]
-    fg[..., :3] = rgb * (1 - grey) + (255 - rgb) * grey
+    gray = np.clip(1 - (mx - mn - 20) / 20, 0, 1)[..., None]
+    fg[..., :3] = rgb * (1 - gray) + (255 - rgb) * gray
     return fg
 
 
 def from_glory(fg_path: StrPath, bg_path: StrPath, fix: GloryFix) -> Image.Image:
     """Take the foreground layer of a Glory theme icon, for the shared plate in place of its light background.
 
-    invert: flip grey-black parts (clock hands, remote body) to light so they read on the plate
+    invert: flip gray-black parts (clock hands, remote body) to light so they read on the plate
     flatten: make see-through black parts (the brush handle) opaque, in HANDLE with the shading they show on white
-    band: keep the coloured parts of the background (the calendar's red header)
-    tint: colour a pale glyph with its background colour (Phone and Contacts green, App Market blue)
+    band: keep the colored parts of the background (the calendar's red header)
+    tint: color a pale glyph with its background color (Phone and Contacts green, App Market blue)
     """
     fg, bg = adaptive_layer(fg_path), adaptive_layer(bg_path)
     rgb = fg[..., :3]
     if fix == 'invert':
-        invert_greys(fg)
+        invert_grays(fg)
     elif fix == 'tint':
         col = bg[..., :3][bg[..., 3] > 250].mean(0) * 1.1
         fg[..., :3] = np.clip(col * (rgb.mean(2, keepdims=True) / 255) ** 0.5, 0, 255)
@@ -415,7 +415,7 @@ def from_glory(fg_path: StrPath, bg_path: StrPath, fix: GloryFix) -> Image.Image
         cov = np.clip(a / 0.5, 0, 1)  # the handle is black at about 0.55 alpha
         # its look on white, with the white at the anti-aliased edges taken back out
         flat_rgb = (rgb * a + 255 * (1 - a) - 255 * (1 - cov)) / np.maximum(cov, 1e-3)
-        # the grey handle looks muddy on the plate: colour it, keeping its shading (the shadow under the bristles)
+        # the gray handle looks muddy on the plate: color it, keeping its shading (the shadow under the bristles)
         handle = np.clip((0xA0 - rgb.max(2, keepdims=True)) / 0x40, 0, 1)
         shade = np.clip(flat_rgb.mean(2, keepdims=True) / 0x73, 0, 1)
         fg[..., :3] = flat_rgb * (1 - handle) + shade * np.array(HANDLE) * handle

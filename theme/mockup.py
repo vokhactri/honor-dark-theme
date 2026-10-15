@@ -1,4 +1,4 @@
-"""Labelled icon sheet for reviewing a variant."""
+"""Labeled icon sheet for reviewing a variant."""
 
 from PIL import Image, ImageDraw
 

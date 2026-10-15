@@ -17,7 +17,7 @@ from .paths import APPS, BUILD, DATA, DIST
 from .unify import App, compose, from_glory, from_orig, from_pack, from_store, layers
 
 VARIANTS = {'flat': 'Dark Flat', 'liquid': 'Liquid Glass'}
-# optional modules: Liquid Glass's live wallpaper and lock screen, the launcher's calendar colours
+# optional modules: Liquid Glass's live wallpaper and lock screen, the launcher's calendar colors
 EXTRA = ('livepaper.xml', 'livepaper_config.xml', 'lockscreen', 'com.hihonor.android.launcher')
 # where each app's source image lives, see the README
 SOURCES = ('web', 'glory', 'orig', 'pack', 'google', 'store')
@@ -49,7 +49,7 @@ def render(p: str) -> None:
     else:
         app = OVERRIDES.get(p, GOOGLE if kind == 'google' else App())
         compose(from_store(src, app), app).save(out)
-        # Liquid Glass shows the wallpaper behind the glyph, so it keeps the colours Dark Flat lifts for its dark plate
+        # Liquid Glass shows the wallpaper behind the glyph, so it keeps the colors Dark Flat lifts for its dark plate
         compose(from_store(src, app, bright=False), app).save(glass)
 
 
@@ -89,7 +89,7 @@ def pack(v: str) -> None:
     outer = stage / 'outer'
     icons = stage / 'icons'
     if v == 'liquid':
-        # Liquid Glass's wallpapers, live wallpaper, lock screen and launcher colours
+        # Liquid Glass's wallpapers, live wallpaper, lock screen and launcher colors
         shutil.copytree(DATA / 'liquid/base', outer)
         liquid_icons(icons)
     else:

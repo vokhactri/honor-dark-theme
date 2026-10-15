@@ -5,7 +5,7 @@ names follow Honor's official theme 荣耀机器人. Every canvas has the size o
 (data/statusbar/sizes.tsv): SystemUI stretches a theme PNG to the stock drawable's bounds. The layout inside each canvas
 follows the stock SystemUI vectors, since several drawables are stacked in one view (signal bars + network type + in/out
 arrows, battery frame + level + charge bolt). SystemUI tints the glyphs, so they are black on transparent; only the low
-battery levels keep their own colour. Glyphs are Material Symbols Rounded (Apache 2.0, data/statusbar), text is Inter
+battery levels keep their own color. Glyphs are Material Symbols Rounded (Apache 2.0, data/statusbar), text is Inter
 Display Bold (OFL, data/inter).
 
 The icons go in com.android.systemui.status, as in 荣耀机器人, which the Themes app merges into com.android.systemui
@@ -35,7 +35,7 @@ type Mask = npt.NDArray[np.float64]  # alpha 0..1 at S x the PNG size
 S = 4  # supersampling
 H = 60  # every icon is 60px tall (20dp at xxhdpi)
 DIM = 0.3  # the unlit part of a meter, as in the stock vectors (fillAlpha 0.3)
-LOW, CRITICAL = (0xFF, 0x9B, 0x1A), (0xF5, 0x48, 0x42)  # SystemUI's low battery colours (<= 20%, <= 10%)
+LOW, CRITICAL = (0xFF, 0x9B, 0x1A), (0xF5, 0x48, 0x42)  # SystemUI's low battery colors (<= 20%, <= 10%)
 MODULES = ('com.android.systemui', 'com.android.systemui.status')  # theme.xml + night/, the icons
 # name -> (w, h) of the stock drawable
 SIZES = {
@@ -84,7 +84,7 @@ def symbol(name: str, h: float | None = None, w: float | None = None) -> Mask:
 
 
 def paste(m: Mask, g: Mask, cx: float, cy: float) -> Mask:
-    """Put glyph g centred on (cx, cy) in a canvas the size of m."""
+    """Put glyph g centered on (cx, cy) in a canvas the size of m."""
     out = np.zeros_like(m)
     y, x = round(cy * S - g.shape[0] / 2), round(cx * S - g.shape[1] / 2)
     if y < 0 or x < 0 or y + g.shape[0] > m.shape[0] or x + g.shape[1] > m.shape[1]:
@@ -101,7 +101,7 @@ def png(m: Mask, rgb: tuple[int, int, int] = (0, 0, 0)) -> Image.Image:
     return im
 
 
-# --- pictograms: one Material symbol centred on the stock canvas
+# --- pictograms: one Material symbol centered on the stock canvas
 
 
 PICTOGRAMS = {
@@ -164,7 +164,7 @@ EM = 50  # Material's 24-unit box, so a full-height glyph is about 42px
 
 
 def fit(name: str, w: float, h: float = H) -> Mask:
-    """A symbol centred on a w x h canvas, at the pictograms' size relative to the height."""
+    """A symbol centered on a w x h canvas, at the pictograms' size relative to the height."""
     return paste(blank(w, h), _symbol(name, EM * h / H), w / 2, h / 2)
 
 
@@ -530,7 +530,7 @@ def tag(w: float, h: float, top: float, bottom: float, main: str, sup: str = '')
         if width <= w - (bottom - top) * 0.22 or cap < 6:
             break
         cap -= 0.25
-    # centre the text block: shift the mask
+    # center the text block: shift the mask
     dx = round(((w - width) / 2) * S)
     dy = round((top + (bottom - top - cap) / 2) * S)
     cut = np.zeros_like(m)
@@ -642,7 +642,7 @@ def icons() -> dict[str, Image.Image]:
 
     out['ic_statusbar_battery'] = png(frame())
     for pct in (5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 95, 100):
-        # SystemUI leaves levels <= 20% untinted, so they show their own colour
+        # SystemUI leaves levels <= 20% untinted, so they show their own color
         rgb = CRITICAL if pct <= 10 else LOW if pct <= 20 else (0, 0, 0)
         im = png(level(pct), rgb)
         for suffix in ('', '_charge', '_full', '_save'):

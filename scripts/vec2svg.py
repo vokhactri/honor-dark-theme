@@ -1,6 +1,6 @@
 """Convert a vector drawable inside an APK (e.g. an adaptive-icon foreground) to SVG. Needs aapt2.
 
-uv run scripts/vec2svg.py app.apk res/drawable/fg.xml out.svg [aapt2-resources-dump.txt] [bg-colour]
+uv run scripts/vec2svg.py app.apk res/drawable/fg.xml out.svg [aapt2-resources-dump.txt] [bg-color]
 """
 
 import re

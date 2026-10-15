@@ -1,8 +1,8 @@
 """Dynamic clock, calendar and weather icons for Dark Flat, laid out like Liquid Glass's dynamic_icons/<package>/.
 
 Every file is a 218px canvas with the icon in the middle 196px. The launcher draws the clock face, then the hour,
-minute and second hands, each pointing at 12 and turned about the canvas centre; the calendar plate with the weekday
-and date set in the colours of the com.hihonor.android.launcher module; and one icon per weather condition.
+minute and second hands, each pointing at 12 and turned about the canvas center; the calendar plate with the weekday
+and date set in the colors of the com.hihonor.android.launcher module; and one icon per weather condition.
 """
 
 import zipfile
@@ -14,11 +14,11 @@ from scipy import ndimage as ndi
 
 from . import liquid
 from .paths import DATA
-from .unify import MASK, PLATE, VIEW, Arr, adaptive_layer, invert_greys, over
+from .unify import MASK, PLATE, VIEW, Arr, adaptive_layer, invert_grays, over
 
 SIZE = liquid.SIZE
 M = (SIZE - VIEW) // 2
-C = 256  # centre of the 512px layer
+C = 256  # center of the 512px layer
 _yy, _xx = np.mgrid[0:512, 0:512]
 R = np.hypot(_xx - C, _yy - C)
 # the launcher draws the date in calendar_dynamic_date and the weekday in calendar_dynamic (Glory: #353535, #FA532A)
@@ -53,16 +53,16 @@ def masked(fg: Arr, m: np.ndarray) -> Arr:
 
 
 def turned(fg: Arr, angle: float) -> Arr:
-    """fg turned anticlockwise by angle degrees about the centre."""
+    """fg turned counterclockwise by angle degrees about the center."""
     return np.asarray(Image.fromarray(fg.astype(np.uint8)).rotate(angle, Image.BICUBIC, center=(C, C))).astype(float)
 
 
 def clock() -> dict[str, Image.Image]:
-    """Glory's clock split into its face and hands, with the greys made light as in the Dark Flat icon.
+    """Glory's clock split into its face and hands, with the grays made light as in the Dark Flat icon.
 
     Glory shows 10:09:30, so the second hand covers the 6; the 6 is redrawn as the 9 turned upside down.
     """
-    fg = invert_greys(adaptive_layer(DATA / 'glory/com.hihonor.deskclock.png'))
+    fg = invert_grays(adaptive_layer(DATA / 'glory/com.hihonor.deskclock.png'))
     a = fg[..., 3]
     second = ((fg[..., 2] - fg[..., 0] > 25) & (a > 10)) | (R <= 12)  # blue hand, its ring and the dot inside
     lab, n = ndi.label((a > 30) & ~ndi.binary_dilation(second, iterations=2))
@@ -102,7 +102,7 @@ def weather() -> dict[str, Image.Image]:
 
 
 def build(icons: Path, outer: Path) -> None:
-    """Write dynamic_icons/ into the icons dir and the launcher module with the calendar colours into outer."""
+    """Write dynamic_icons/ into the icons dir and the launcher module with the calendar colors into outer."""
     sets = {
         'com.hihonor.deskclock': clock(),
         'com.android.calendar': {'calendar_background': on_plate(np.zeros((512, 512, 4)))},

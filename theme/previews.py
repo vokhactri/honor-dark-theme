@@ -101,7 +101,7 @@ def wallpaper() -> Image.Image:
 
 
 def view(w: int, h: int, wall: Image.Image | None = None) -> Image.Image:
-    """The wallpaper (ours by default) as a w x h screen shows it: the centre crop at that aspect, scaled."""
+    """The wallpaper (ours by default) as a w x h screen shows it: the center crop at that aspect, scaled."""
     wall = wall or wallpaper()
     cw, ch = min(wall.width, round(wall.height * w / h)), min(wall.height, round(wall.width * h / w))
     x, y = (wall.width - cw) // 2, (wall.height - ch) // 2
@@ -118,7 +118,7 @@ def status_bar(img: Image.Image) -> None:
 
 
 def place(img: Image.Image, icon: IconFn, pkgs: list[str], xs: list[float], top: float, step: float, size: int):
-    """Icons in rows of len(xs), centred on xs."""
+    """Icons in rows of len(xs), centered on xs."""
     for i, p in enumerate(pkgs):
         r, c = divmod(i, len(xs))
         img.alpha_composite(icon(p, size), (round(xs[c] - size / 2), round(top + r * step)))
@@ -210,7 +210,7 @@ def render(variant: str, outdir: Path) -> None:
     d.text((W / 2, 420), TIME, fill='white', font=font(240, True), anchor='mm')
     save(img, 'preview_unlock_0.jpg')
 
-    # cards in the Themes app's icon list: 3 x 2 on black, 2 x 2 on light grey
+    # cards in the Themes app's icon list: 3 x 2 on black, 2 x 2 on light gray
     img = Image.new('RGBA', (510, 345), 'black')
     place(img, icon, SMALL, [101.5, 254.5, 408.5], 52, 138, 103)
     save(img, 'icon_small.jpg')

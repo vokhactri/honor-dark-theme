@@ -2,12 +2,12 @@
 
 SystemUI (FingerprintIconUtil) loads the module's first file whose name starts with `icon` and renders an SVG at its
 width x height in dp. An icon that is pure white is handled like the stock vector: SystemUI tints it and fills it with
-the blurred lock screen wallpaper, so it adapts to light and dark wallpapers. Any other colour is drawn as is. The
+the blurred lock screen wallpaper, so it adapts to light and dark wallpapers. Any other color is drawn as is. The
 installer drops the module unless it has name.xml. The glyph is the XANA symbol from Code Lyoko
-(https://codelyoko.com/XANAsymbol.svg, recoloured white in data/fingerprint), as tall as the 56dp box.
+(https://codelyoko.com/XANAsymbol.svg, recolored white in data/fingerprint), as tall as the 56dp box.
 
 fingerprint_anim is what the system server (FingerprintAnimByThemeModel, FpLayer) plays once when a finger touches the
-sensor: up to 30 frames in res/light/, at <lightfps> frames per second, centred on the sensor and drawn at their pixel
+sensor: up to 30 frames in res/light/, at <lightfps> frames per second, centered on the sensor and drawn at their pixel
 size (scaled only when the screen runs below its native resolution). The installer drops the module without
 res/shortcut/shortcut.png. Here the symbol turns red from the bottom up, like a tower XANA activates, with a red glow
 and one pulse of the tower's aura, then fades out.
@@ -96,14 +96,14 @@ def frames() -> list[Image.Image]:
         # the red front climbs from below the symbol to above it
         front = o + ICON + soft - ease(i / WIPE) * (ICON + 2 * soft)
         red = ease((y - front) / soft + 0.5)[..., None]
-        colour = WHITE * (1 - red) + RED * red
+        color = WHITE * (1 - red) + RED * red
         # the glow follows the red, then breathes; the aura is one ring leaving the symbol
         glow = ease(i / WIPE) * (1 + 0.15 * np.sin(max(i - WIPE, 0) / 3))
         s = (i - WIPE) / (FRAMES - WIPE)
         ring = 0.0 if s < 0 else (1 - s) * np.exp(-(((r - (0.5 + 0.8 * s) * ICON) / (0.05 * ICON)) ** 2))
         halo = np.clip(glow * (0.9 * near + 0.5 * far) + 0.6 * ring, 0, 1)
         a = glyph + halo * (1 - glyph)
-        rgb = (colour * glyph[..., None] + RED * (halo * (1 - glyph))[..., None]) / np.maximum(a, 1e-6)[..., None]
+        rgb = (color * glyph[..., None] + RED * (halo * (1 - glyph))[..., None]) / np.maximum(a, 1e-6)[..., None]
         a = a * (1 - ease((i - (FRAMES - 1 - FADE)) / FADE))
         im = np.dstack([np.clip(rgb, 0, 255), a * 255])
         out.append(Image.fromarray(np.round(im).astype(np.uint8), 'RGBA'))

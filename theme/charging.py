@@ -9,7 +9,7 @@ draws the lightning icon, the battery level and the charging prompt at the spots
 The video is H.264 with its transparency in a third track, as in Honor's official theme 荣耀机器人: a data track
 (handler MINE, sample entry mp4s, udta name HonorPrivateData) with one sample per video frame. Each sample is an LZ4
 frame of an 8-bit alpha mask at half size, 540 x 1080 in rows of 544 bytes (half the 1088px coded width). The first
-sample starts with the 24-byte header b'HonorPrivateData' 00 01 00 00 00 00 00 00. Colour is not premultiplied.
+sample starts with the 24-byte header b'HonorPrivateData' 00 01 00 00 00 00 00 00. Color is not premultiplied.
 
 Here the XANA symbol (as on the fingerprint icon, see fingerprint.py) turns red from the bottom up, then glows and
 sends out the rings of a tower's aura, looping every three seconds.
@@ -41,7 +41,7 @@ INIT, LOOP = 30, 90  # frames turning red, frames of the loop
 FRAMES = INIT + LOOP
 SIZE = 520  # px, the symbol's height
 TOP, BOTTOM = 280, 1480  # rows the animation can reach; the battery level and prompt sit below
-CY = 860  # the symbol's centre
+CY = 860  # the symbol's center
 GOP = 30  # a key frame every second, so the loop starts on one
 MAGIC = b'HonorPrivateData' + bytes([0, 1, 0, 0, 0, 0, 0, 0])
 STRIDE = 544  # bytes per alpha row
@@ -98,7 +98,7 @@ def frames() -> list[Image.Image]:
         # the red front climbs from below the symbol to above it, as on the fingerprint
         front = y0 + SIZE + soft - ease(i / INIT) * (SIZE + 2 * soft)
         red = ease((y - front) / soft + 0.5)[..., None]
-        colour = WHITE * (1 - red) + RED * red
+        color = WHITE * (1 - red) + RED * red
         # t runs 0..1 over the loop; the glow breathes once per loop and two aura rings leave the symbol half a loop
         # apart, so the last frame flows into the first. During the turn the rings fade in.
         t = (i - INIT) / LOOP
@@ -110,7 +110,7 @@ def frames() -> list[Image.Image]:
         ring *= ease(i / INIT)
         halo = np.clip(glow * (0.8 * near + 0.45 * far) + 0.5 * ring, 0, 1)
         a = glyph + halo * (1 - glyph)
-        rgb = (colour * glyph[..., None] + RED * (halo * (1 - glyph))[..., None]) / np.maximum(a, 1e-6)[..., None]
+        rgb = (color * glyph[..., None] + RED * (halo * (1 - glyph))[..., None]) / np.maximum(a, 1e-6)[..., None]
         im = np.dstack([np.clip(rgb, 0, 255) * (a > 0)[..., None], a * 255])
         out.append(Image.fromarray(np.round(im).astype(np.uint8), 'RGBA'))
     return out
@@ -150,7 +150,7 @@ def mockup(fs: list[Image.Image], dst: Path) -> None:
 
 
 def video(fs: list[Image.Image]) -> bytes:
-    """H.264 of the colour (black where transparent), muxed by PyAV, plus the alpha track."""
+    """H.264 of the color (black where transparent), muxed by PyAV, plus the alpha track."""
     buf = io.BytesIO()
     with av.open(buf, 'w', format='mp4') as out:
         s = out.add_stream('libx264', rate=FPS)
