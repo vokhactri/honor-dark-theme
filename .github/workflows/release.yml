@@ -19,7 +19,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version-file: .python-version
       - uses: astral-sh/setup-uv@v10.3.0
+        with:
+          version: 0.13.1
       - if: github.ref_type == 'tag'
         name: Check the tag matches the version in pyproject.toml
         run: |
@@ -29,12 +34,16 @@ jobs:
           }
       - run: uv sync --locked
       - run: uv run ruff format --check && uv run ruff check
-      # theme/charging.py checks its own key, so a stale cache from restore-keys only means a render
+      # the key theme/charging.py looks up, so a version bump or a new dev tool in uv.lock keeps the cache
+      - id: charging
+        # an assignment fails the step if python fails, an echo of $(...) would not
+        run: |
+          key=$(uv run python -c 'from theme.charging import key; print(key())')
+          echo "key=$key" >> "$GITHUB_OUTPUT"
       - uses: actions/cache@v6
         with:
           path: build/charging/cache
-          key: charging-${{ runner.os }}-${{ hashFiles('theme/charging.py', 'theme/fingerprint.py', 'theme/previews.py', 'theme/paths.py', 'data/fingerprint/**', 'data/inter/**', 'uv.lock') }}
-          restore-keys: charging-${{ runner.os }}-
+          key: charging-${{ runner.os }}-${{ steps.charging.outputs.key }}
       - run: uv run -m theme.build
       - uses: actions/upload-artifact@v7
         with:
