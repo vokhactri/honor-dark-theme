@@ -3,7 +3,7 @@
     <title>{title}</title>
     <title-cn>{title}</title-cn>
     <author>trivk</author>
-    <designer>Họa Tiếu</designer>
+    <designer>trivk</designer>
     <screen>FHD</screen>
     <version>8.0.3</version>
     <font>Default</font>
