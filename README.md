@@ -42,6 +42,12 @@ uv run ruff check
 uv run basedpyright
 ```
 
+CI runs only ruff. To run all three checks on every commit, turn on the repo's pre-commit hook once per clone:
+
+```sh
+git config core.hooksPath .githooks
+```
+
 ## Release
 
 1. Build, then try both themes on the phone. Delete the old theme in the Themes app first if you want to see the new cover.
