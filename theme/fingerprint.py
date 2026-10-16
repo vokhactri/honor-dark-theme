@@ -15,6 +15,7 @@ and one pulse of the tower's aura, then fades out.
 
 import io
 import xml.etree.ElementTree as ET
+from functools import cache
 from pathlib import Path
 
 import numpy as np
@@ -57,12 +58,15 @@ def _path(e: ET.Element, transforms: tuple[str, ...] = ()) -> tuple[ET.Element, 
     return next(_path(c, transforms) for c in e if c.tag in (f'{SVG}g', f'{SVG}path'))
 
 
+@cache
 def svg() -> str:
     root = ET.parse(SRC).getroot()
     path, transform = _path(root)
     # the glyph's bounds in the source's user units (it has no viewBox), rendered at K px per unit
-    png = resvg_py.svg_to_bytes(svg_path=str(SRC), height=round(float(root.get('height')) * K))
-    x0, y0, x1, y1 = (v / K for v in Image.open(io.BytesIO(bytes(png))).getchannel('A').getbbox())
+    png = resvg_py.svg_to_bytes(svg_path=str(SRC), height=round(float(root.attrib['height']) * K))
+    box = Image.open(io.BytesIO(bytes(png))).getchannel('A').getbbox()
+    assert box, 'the symbol renders empty'
+    x0, y0, x1, y1 = (v / K for v in box)
     side = y1 - y0
     vx, vy = (x0 + x1 - side) / 2, (y0 + y1 - side) / 2
     return (
@@ -110,19 +114,25 @@ def frames() -> list[Image.Image]:
     return out
 
 
-def build(outer: Path, title: str) -> None:
+def files() -> dict[str, bytes]:
+    """The modules' files except name.xml, the same for both themes, with each frame encoded once; also writes the
+    frames to build/fingerprint for review."""
+    review = BUILD / 'fingerprint'
+    review.mkdir(parents=True, exist_ok=True)
+    out = {'fingerprint_icon/icon.svg': svg().encode(), 'fingerprint_anim/fptheme.xml': FPTHEME.encode()}
+    for i, f in enumerate(frames()):
+        buf = io.BytesIO()
+        f.save(buf, 'PNG')
+        out[f'fingerprint_anim/res/light/{i:02d}.png'] = buf.getvalue()
+        (review / f'{i:02d}.png').write_bytes(buf.getvalue())
+    out['fingerprint_anim/res/shortcut/shortcut.png'] = out[f'fingerprint_anim/res/light/{WIPE + 2:02d}.png']
+    return out
+
+
+def build(outer: Path, title: str, files: dict[str, bytes]) -> None:
     for m in MODULES:
         (outer / m).mkdir()
         (outer / m / 'name.xml').write_text(NAME.format(title=title))
-    (outer / 'fingerprint_icon/icon.svg').write_text(svg())
-    anim = outer / 'fingerprint_anim'
-    (anim / 'fptheme.xml').write_text(FPTHEME)
-    (anim / 'res/light').mkdir(parents=True)
-    (anim / 'res/shortcut').mkdir()
-    review = BUILD / 'fingerprint'
-    review.mkdir(exist_ok=True)
-    fs = frames()
-    for i, f in enumerate(fs):
-        f.save(anim / f'res/light/{i:02d}.png')
-        f.save(review / f'{i:02d}.png')
-    fs[WIPE + 2].save(anim / 'res/shortcut/shortcut.png')
+    for rel, data in files.items():
+        (outer / rel).parent.mkdir(parents=True, exist_ok=True)
+        (outer / rel).write_bytes(data)

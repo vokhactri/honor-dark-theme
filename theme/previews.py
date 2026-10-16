@@ -105,7 +105,7 @@ def view(w: int, h: int, wall: Image.Image | None = None) -> Image.Image:
     wall = wall or wallpaper()
     cw, ch = min(wall.width, round(wall.height * w / h)), min(wall.height, round(wall.width * h / w))
     x, y = (wall.width - cw) // 2, (wall.height - ch) // 2
-    return wall.crop((x, y, x + cw, y + ch)).resize((w, h), Image.LANCZOS).convert('RGBA')
+    return wall.crop((x, y, x + cw, y + ch)).resize((w, h), Image.Resampling.LANCZOS).convert('RGBA')
 
 
 def status_bar(img: Image.Image) -> None:
@@ -158,7 +158,7 @@ def render(variant: str, outdir: Path) -> None:
         return drawn(variant, p)
 
     def icon(p: str, s: int) -> Image.Image:
-        return big(p).resize((s, s), Image.LANCZOS)
+        return big(p).resize((s, s), Image.Resampling.LANCZOS)
 
     def screen(w: int, h: int) -> Image.Image:
         return view(w, h, wall)

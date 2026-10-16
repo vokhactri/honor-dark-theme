@@ -15,8 +15,16 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "basedpyright>=1.40.2",
     "ruff>=0.17.0",
+    "scipy-stubs>=1.18.1.1",
 ]
+
+[tool.basedpyright]
+# build/ holds scratch scripts that are not part of the source
+include = ["theme", "scripts"]
+# pyright's default checks; basedpyright's "recommended" adds many more
+typeCheckingMode = "standard"
 
 [tool.ruff]
 line-length = 120

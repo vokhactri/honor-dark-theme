@@ -28,7 +28,7 @@ def glass(p: str) -> Image.Image:
     icon = Image.open(ICONS / 'icon_background.png').convert('RGBA')
     own = BUILD / f'out/glass/{p}.png'
     glyph = Image.open(own if own.exists() else BUILD / f'out/flat/{p}.png').convert('RGBA')
-    glyph = glyph.resize((VIEW, VIEW), Image.LANCZOS)
+    glyph = glyph.resize((VIEW, VIEW), Image.Resampling.LANCZOS)
     icon.alpha_composite(glyph, (M, M))
     icon.alpha_composite(Image.open(ICONS / 'icon_border.png').convert('RGBA'))
     return icon

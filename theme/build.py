@@ -7,6 +7,7 @@ uv run -m theme.build com.zing.zalo    # only these apps, reuse the rest from bu
 import shutil
 import sys
 import zipfile
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
 from PIL import Image
@@ -82,8 +83,10 @@ def liquid_icons(icons: Path) -> None:
         liquid.glass(p).save(icons / f'{p}.png')
 
 
-def pack(v: str) -> None:
+def prepare(v: str) -> Path:
+    """The parts of v's theme that are its own: the mockup, base files, icons and previews. Returns the outer dir."""
     title = VARIANTS[v]
+    mockup.render(v, title)
     stage = BUILD / f'stage_{v}'
     shutil.rmtree(stage, ignore_errors=True)
     outer = stage / 'outer'
@@ -102,13 +105,19 @@ def pack(v: str) -> None:
     desc.write_text(desc.read_text().replace('{title}', title))
     (outer / 'preview').mkdir()
     previews.render(v, outer / 'preview')
-    statusbar.build(outer)
-    fingerprint.build(outer, title)
-    charging.build(outer)
     # `icons` is a deflated zip without an extension, stored inside the outer zip
     with zipfile.ZipFile(outer / 'icons', 'w', zipfile.ZIP_DEFLATED) as zf:
         for c in sorted(icons.iterdir()):
             zipdir(zf, icons, c.name)
+    return outer
+
+
+def pack(v: str, outer: Path, status: dict[str, bytes], fp: dict[str, bytes], charged: dict[str, bytes]) -> None:
+    """Add the modules both themes share to v's prepared outer dir and write its .hnt."""
+    title = VARIANTS[v]
+    statusbar.build(outer, status)
+    fingerprint.build(outer, title, fp)
+    charging.build(outer, charged)
     DIST.mkdir(exist_ok=True)
     hnt = DIST / f'{title.replace(" ", "-")}-Honor.hnt'
     with zipfile.ZipFile(hnt, 'w', zipfile.ZIP_STORED) as zf:
@@ -126,17 +135,22 @@ def pack(v: str) -> None:
             zipdir(zf, outer, rel)
     with zipfile.ZipFile(hnt) as zf:
         assert zf.testzip() is None
-    print(f'{hnt.name}: {len(list(icons.iterdir()))} entries in icons, {hnt.stat().st_size} bytes')
+    print(f'{hnt.name}: {len(list((outer.parent / "icons").iterdir()))} entries in icons, {hnt.stat().st_size} bytes')
 
 
 def main() -> None:
     for d in ('flat', 'glass'):
         (BUILD / f'out/{d}').mkdir(parents=True, exist_ok=True)
-    for p in sys.argv[1:] or sorted(APPS):
-        render(p)
-    for v, title in VARIANTS.items():
-        mockup.render(v, title)
-        pack(v)
+    with ProcessPoolExecutor() as pool:
+        # the charging module is the longest job, so it starts first. The status bar and fingerprint modules are the
+        # same in both themes, so each renders once, alongside the icons
+        charged = pool.submit(charging.files)
+        status = pool.submit(statusbar.files)
+        fp = pool.submit(fingerprint.files)
+        list(pool.map(render, sys.argv[1:] or sorted(APPS)))
+        prepared = {v: pool.submit(prepare, v) for v in VARIANTS}
+        for v, outer in prepared.items():
+            pack(v, outer.result(), status.result(), fp.result(), charged.result())
 
 
 if __name__ == '__main__':

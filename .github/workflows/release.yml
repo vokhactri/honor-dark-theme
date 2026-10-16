@@ -1,10 +1,14 @@
 # Push a v* tag to build both themes and publish them as a GitHub release.
 # Run it by hand (Actions > Release > Run workflow) to only build and download the .hnt files as an artifact.
+# A push to main that changes the charging animation builds too, so main holds its cache: a tag's run can't read the
+# cache another tag saved, only its own and main's.
 name: Release
 
 on:
   push:
     tags: ['v*']
+    branches: [main]
+    paths: [theme/charging.py, theme/fingerprint.py, theme/previews.py, theme/paths.py, data/fingerprint/**, data/inter/**, uv.lock]
   workflow_dispatch:
 
 permissions:
@@ -16,6 +20,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v10.3.0
+        with:
+          # "auto" skips the cache on tag pushes, which is every release
+          enable-cache: true
       - if: github.ref_type == 'tag'
         name: Check the tag matches the version in pyproject.toml
         run: |
@@ -24,7 +31,13 @@ jobs:
             exit 1
           }
       - run: uv sync --locked
-      - run: uv run ruff format --check && uv run ruff check
+      - run: uv run ruff format --check && uv run ruff check && uv run basedpyright
+      # theme/charging.py checks its own key, so a stale cache from restore-keys only means a render
+      - uses: actions/cache@v6
+        with:
+          path: build/charging/cache
+          key: charging-${{ runner.os }}-${{ hashFiles('theme/charging.py', 'theme/fingerprint.py', 'theme/previews.py', 'theme/paths.py', 'data/fingerprint/**', 'data/inter/**', 'uv.lock') }}
+          restore-keys: charging-${{ runner.os }}-
       - run: uv run -m theme.build
       - uses: actions/upload-artifact@v7
         with:

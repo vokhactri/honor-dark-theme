@@ -15,9 +15,13 @@ Here the XANA symbol (as on the fingerprint icon, see fingerprint.py) turns red 
 sends out the rings of a tower's aura, looping every three seconds.
 """
 
+import hashlib
 import io
+import os
+import shutil
 import struct
-from functools import cache
+import tempfile
+from importlib.metadata import version
 from pathlib import Path
 
 import av
@@ -30,7 +34,7 @@ from PIL import Image, ImageDraw
 
 from . import fingerprint, previews
 from .fingerprint import RED, WHITE, blur, ease
-from .paths import BUILD
+from .paths import BUILD, ROOT
 
 type Mask = npt.NDArray[np.float64]  # alpha 0..1
 
@@ -45,6 +49,19 @@ CY = 860  # the symbol's center
 GOP = 30  # a key frame every second, so the loop starts on one
 MAGIC = b'HonorPrivateData' + bytes([0, 1, 0, 0, 0, 0, 0, 0])
 STRIDE = 544  # bytes per alpha row
+CACHE = BUILD / 'charging/cache'
+NAMES = ('charging_config.xml', 'contentLang.xml', 'lightning.png', 'charging_video.mp4')
+# what the module depends on: this code, the XANA symbol, the review GIF's wallpaper and fonts, and the packages that
+# draw and encode it (their versions decide the video's bytes)
+INPUTS = (
+    'theme/charging.py',
+    'theme/fingerprint.py',
+    'theme/previews.py',
+    'theme/paths.py',
+    'data/fingerprint',
+    'data/inter',
+)
+PACKAGES = ('av', 'lz4', 'numpy', 'pillow', 'resvg-py')
 BOLT = (26, 67)  # the lightning icon, as in 荣耀机器人
 CONFIG = f"""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <ChargingConfig>
@@ -123,7 +140,7 @@ def bolt() -> Image.Image:
     pts = [(26, 0), (4, 39), (13.5, 39), (0, 67), (23, 27), (13, 27), (26, 0)]
     im = Image.new('L', (w * s, h * s))
     ImageDraw.Draw(im).polygon([(px * s, py * s) for px, py in pts], fill=255)
-    a = im.resize(BOLT, Image.LANCZOS)
+    a = im.resize(BOLT, Image.Resampling.LANCZOS)
     out = Image.new('RGBA', BOLT, tuple(int(c) for c in RED) + (0,))
     out.putalpha(a)
     return out
@@ -145,7 +162,7 @@ def mockup(fs: list[Image.Image], dst: Path) -> None:
     for f in fs + fs[INIT:]:
         im = bg.copy()
         im.alpha_composite(f, (0, TOP))
-        shots.append(im.convert('RGB').resize((W // 3, H // 3), Image.LANCZOS))
+        shots.append(im.convert('RGB').resize((W // 3, H // 3), Image.Resampling.LANCZOS))
     shots[0].save(dst, save_all=True, append_images=shots[1:], duration=1000 // FPS, loop=0)
 
 
@@ -184,7 +201,7 @@ def video(fs: list[Image.Image]) -> bytes:
 def alpha(f: Image.Image) -> bytes:
     """One sample of the alpha track: the frame's alpha at half size, LZ4 compressed."""
     a = np.zeros((H // 2, STRIDE), np.uint8)
-    half = f.getchannel('A').resize((W // 2, f.height // 2), Image.BOX)
+    half = f.getchannel('A').resize((W // 2, f.height // 2), Image.Resampling.BOX)
     a[TOP // 2 : TOP // 2 + half.height, : W // 2] = np.asarray(half)
     return lz4.frame.compress(
         a.tobytes(),
@@ -277,32 +294,56 @@ def with_alpha(mp4: bytes, samples: list[bytes]) -> bytes:
     return head + new + box(b'mdat', *samples)
 
 
-@cache
+def key() -> str:
+    h = hashlib.sha256()
+    for p in PACKAGES:
+        h.update(f'{p}=={version(p)}\0'.encode())
+    for f in sorted(f for i in INPUTS for f in [ROOT / i, *(ROOT / i).rglob('*')] if f.is_file()):
+        h.update(str(f.relative_to(ROOT)).encode() + b'\0' + f.read_bytes())
+    return h.hexdigest()
+
+
 def files() -> dict[str, bytes]:
-    """The module's files, rendered once for both themes; also writes a GIF of it to build/charging for review."""
+    """The module's files. Rendering them takes most of a build, so this keeps them in build/charging/cache and renders
+    them again only when one of the INPUTS or PACKAGES changes. A render outside CI also writes a GIF of the
+    animation to build/charging for review."""
+    k = key()
+    try:
+        return {n: (CACHE / k / n).read_bytes() for n in NAMES}
+    except FileNotFoundError:
+        pass
     fs = frames()
     review = BUILD / 'charging'
-    review.mkdir(exist_ok=True)
-    mockup(fs, review / 'mockup.gif')
+    review.mkdir(parents=True, exist_ok=True)
+    # nobody looks at the GIF on CI, and it takes a third of the render
+    if not os.environ.get('CI'):
+        mockup(fs, review / 'mockup.gif')
     png = io.BytesIO()
     bolt().save(png, 'PNG')
-    return {
-        'charging_config.xml': CONFIG.encode(),
-        'contentLang.xml': LANG.encode(),
-        'lightning.png': png.getvalue(),
-        'charging_video.mp4': video(fs),
-    }
+    out: dict[str, bytes] = dict(zip(NAMES, (CONFIG.encode(), LANG.encode(), png.getvalue(), video(fs)), strict=True))
+    # write to a new directory and rename it into place, so a build never reads a half-written cache
+    CACHE.mkdir(exist_ok=True)
+    tmp = Path(tempfile.mkdtemp(prefix='.', dir=CACHE))
+    for name, data in out.items():
+        (tmp / name).write_bytes(data)
+    shutil.rmtree(CACHE / k, ignore_errors=True)  # drop a cache that lost some of its files
+    try:
+        tmp.rename(CACHE / k)
+    except OSError:  # another build cached the same key first
+        shutil.rmtree(tmp)
+    for old in CACHE.iterdir():
+        if old.name != k and not old.name.startswith('.'):
+            shutil.rmtree(old) if old.is_dir() else old.unlink()
+    return out
 
 
-def build(outer: Path) -> None:
+def build(outer: Path, files: dict[str, bytes]) -> None:
     mod = outer / 'charging'
     mod.mkdir(parents=True)
-    for name, data in files().items():
+    for name, data in files.items():
         (mod / name).write_bytes(data)
 
 
 if __name__ == '__main__':
-    import shutil
-
     shutil.rmtree(BUILD / 'charging/module', ignore_errors=True)
-    build(BUILD / 'charging/module')
+    build(BUILD / 'charging/module', files())

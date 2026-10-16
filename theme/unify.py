@@ -27,7 +27,7 @@ LAYER, VIEW = 294, 196  # adaptive layer size and the center part the launcher s
 def _mask() -> Image.Image:
     """The launcher's icon mask (218px, the squircle is the middle 196px), cropped to the squircle."""
     m = Image.open(DATA / 'system/icon_mask.png').getchannel('A')
-    return m.crop(m.getbbox()).resize((S, S), Image.LANCZOS)
+    return m.crop(m.getbbox()).resize((S, S), Image.Resampling.LANCZOS)
 
 
 MASK = np.asarray(_mask()).astype(float) / 255
@@ -59,13 +59,13 @@ MASK_EDGE = ndi.distance_transform_edt(MASK > 0.5)  # px to the squircle edge
 
 
 def alpha_bbox(im: Image.Image, thr: int) -> tuple[int, int, int, int] | None:
-    return im.getchannel('A').point(lambda v: 255 if v > thr else 0).getbbox()
+    return im.getchannel('A').point([255 if v > thr else 0 for v in range(256)]).getbbox()
 
 
 def trimmed(path: StrPath) -> Arr:
     """Load a pack icon, cropped to its opaque area and scaled to S."""
     im = Image.open(path).convert('RGBA')
-    return np.asarray(im.crop(alpha_bbox(im, 40)).resize((S, S), Image.LANCZOS)).astype(float)
+    return np.asarray(im.crop(alpha_bbox(im, 40)).resize((S, S), Image.Resampling.LANCZOS)).astype(float)
 
 
 def touching_border(mask: npt.NDArray[np.bool_]) -> npt.NDArray[np.bool_]:
@@ -122,7 +122,7 @@ def layers(fg: Image.Image) -> tuple[Image.Image, Image.Image]:
     filling the whole background (its gradient runs over the shown part and holds its end colors beyond)."""
     m = (LAYER - VIEW) // 2
     front = Image.new('RGBA', (LAYER, LAYER))
-    front.alpha_composite(fg.convert('RGBA').resize((VIEW, VIEW), Image.LANCZOS), (m, m))
+    front.alpha_composite(fg.convert('RGBA').resize((VIEW, VIEW), Image.Resampling.LANCZOS), (m, m))
     rows = np.clip((np.arange(LAYER) - m + 0.5) / VIEW * S - 0.5, 0, S - 1)  # layer row -> plate row
     col = np.stack([np.interp(rows, np.arange(S), PROFILE[:, c]) for c in range(3)], -1)
     back = np.broadcast_to(col[:, None, :], (LAYER, LAYER, 3))
@@ -222,7 +222,7 @@ def square(im: Image.Image) -> Image.Image:
         c = Image.new('RGBA', (n, n), fill)
         c.paste(im, ((n - w) // 2, (n - h) // 2))
         im = c
-    return im.resize((S, S), Image.LANCZOS)
+    return im.resize((S, S), Image.Resampling.LANCZOS)
 
 
 def keyed_alpha(app: App, rgb: Arr, al: Arr) -> Arr:
@@ -335,7 +335,10 @@ def drop_specks(fg: Arr) -> Arr:
     if len(idx) > 1:
         big = sizes.max()
         mlum = ndi.mean(fg[..., :3].max(2), lab, idx)
-        at_rim = np.array([min(y.start, x.start, S - y.stop, S - x.stop) < 0.05 * S for y, x in ndi.find_objects(lab)])
+        # ndi.label numbers the parts 1..n, so find_objects returns no None; filter(None) only satisfies the types
+        at_rim = np.array(
+            [min(y.start, x.start, S - y.stop, S - x.stop) < 0.05 * S for y, x in filter(None, ndi.find_objects(lab))]
+        )
         junk = (
             ((sizes < 0.004 * S * S) & (mlum < 80))
             | (sizes < 0.0005 * S * S)
@@ -362,7 +365,7 @@ def compose(fg: Arr, app: App) -> Image.Image:
     if bb := alpha_bbox(fgim, 20):
         g = fgim.crop(bb)
         k = frac * S / max(g.size)
-        g = g.resize((max(1, round(g.width * k)), max(1, round(g.height * k))), Image.LANCZOS)
+        g = g.resize((max(1, round(g.width * k)), max(1, round(g.height * k))), Image.Resampling.LANCZOS)
         layer.alpha_composite(g, ((S - g.width) // 2 + int(dx * S), (S - g.height) // 2 + int(dy * S)))
     return finish(np.asarray(layer).astype(float))
 
@@ -375,7 +378,9 @@ def adaptive_layer(path: StrPath) -> Arr:
     """Load an adaptive icon layer, cropped to the center 2/3 the launcher shows (72 of 108 dp) and scaled to S."""
     im = Image.open(path).convert('RGBA')
     c = round(im.width / 6)
-    return np.asarray(im.crop((c, c, im.width - c, im.height - c)).resize((S, S), Image.LANCZOS)).astype(float)
+    return np.asarray(im.crop((c, c, im.width - c, im.height - c)).resize((S, S), Image.Resampling.LANCZOS)).astype(
+        float
+    )
 
 
 def over(dst: Arr, src: Arr) -> None:

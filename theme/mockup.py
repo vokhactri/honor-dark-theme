@@ -20,7 +20,7 @@ def render(variant: str, title: str) -> None:
     for i, p in enumerate(pkgs):
         x = 20 + (i % COLS) * CELL + 12
         y = 70 + (i // COLS) * (CELL + 26)
-        im = drawn(variant, p).resize((126, 126), Image.LANCZOS)
+        im = drawn(variant, p).resize((126, 126), Image.Resampling.LANCZOS)
         s.paste(im, (x, y), im)
         w = d.textlength(APPS[p], font=label)
         d.text((x + 63 - w / 2, y + 130), APPS[p], fill=(215, 215, 215), font=label)

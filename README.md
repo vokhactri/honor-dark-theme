@@ -32,13 +32,14 @@ uv run -m theme.build                  # all icons, writes dist/Dark-Flat-Honor.
 uv run -m theme.build com.zing.zalo    # rebuild only these apps, reuse the rest from build/out
 ```
 
-A full build takes about 20 seconds. For review, it also writes labeled icon sheets to `build/mockup-flat.png` and `build/mockup-liquid.png`, the status bar icons to `build/statusbar/` and the fingerprint animation frames to `build/fingerprint/`. To redraw only the status bar icons, run `uv run -m theme.statusbar`.
+A full build takes about 30 seconds. The charging animation takes most of that, so the build keeps it in `build/charging/cache` and renders it again only when one of the `INPUTS` or `PACKAGES` in `charging.py` changes. After that a build takes about 9 seconds. For review, it also writes labeled icon sheets to `build/mockup-flat.png` and `build/mockup-liquid.png`, the status bar icons to `build/statusbar/` and the fingerprint animation frames to `build/fingerprint/`. To redraw only the status bar icons, run `uv run -m theme.statusbar`.
 
-Format and lint with ruff before committing:
+Format, lint and type check before committing:
 
 ```sh
 uv run ruff format
 uv run ruff check
+uv run basedpyright
 ```
 
 ## Release

@@ -18,7 +18,7 @@ dark mode. On SDK 37 the merge keeps it.
 
 import io
 import zipfile
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from functools import cache
 from pathlib import Path
 
@@ -183,7 +183,7 @@ def bars5(w: float) -> list[tuple[float, float, float]]:
     return [(w - 68 + 13 * i, 41 - 7 * i, 8) for i in range(5)]
 
 
-def bars(layout: list[tuple[float, float, float]], lit: int, w: float = 80, bottom: float = 52) -> Mask:
+def bars(layout: Sequence[tuple[float, float, float]], lit: int, w: float = 80, bottom: float = 52) -> Mask:
     """Bars at the stock positions with Material's fully rounded ends, the first lit ones opaque."""
     m = blank(w)
     return over(
@@ -407,7 +407,7 @@ BOLTS = [
 def rounded(m: Mask, r: float = ROUND) -> Mask:
     """m with its convex corners rounded to r px (an opening) and its concave ones to r/2 (a closing)."""
 
-    def grow(a: Mask, by: float) -> Mask:
+    def grow(a: Mask | npt.NDArray[np.bool_], by: float) -> Mask:
         return np.clip(by * S + 0.5 - ndimage.distance_transform_edt(a < 0.5), 0, 1)
 
     opened = grow(grow(1 - m, r) < 0.5, r)
@@ -676,26 +676,36 @@ def icons() -> dict[str, Image.Image]:
     return out
 
 
-def build(dst: Path) -> None:
-    """Write the two module zips into the directory dst, and the PNGs to build/statusbar for review."""
+def files() -> dict[str, bytes]:
+    """The two module zips, the same for both themes; also writes the PNGs to build/statusbar for review."""
     res = BUILD / 'statusbar'
     res.mkdir(parents=True, exist_ok=True)
     ui, status = MODULES
-    with zipfile.ZipFile(dst / ui, 'w', zipfile.ZIP_DEFLATED) as zf:
+    out: dict[str, bytes] = {}
+    with zipfile.ZipFile(buf := io.BytesIO(), 'w', zipfile.ZIP_DEFLATED) as zf:
         zf.write(DATA / 'statusbar/theme.xml', 'theme.xml')
         # SystemUI only checks for this exact entry; night/theme.xml is empty, so dark mode uses the root values too
         zf.writestr('night/', '')
         zf.writestr('night/theme.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<resources />\n')
-    with zipfile.ZipFile(dst / status, 'w', zipfile.ZIP_DEFLATED) as zf:
+    out[ui] = buf.getvalue()
+    with zipfile.ZipFile(buf := io.BytesIO(), 'w', zipfile.ZIP_DEFLATED) as zf:
         zf.writestr('res/', '')
         zf.writestr('res/drawable-xxhdpi/', '')
         for name, im in sorted(icons().items()):
-            im.save(res / f'{name}.png')
-            buf = io.BytesIO()
-            im.save(buf, 'PNG')
-            zf.writestr(f'res/drawable-xxhdpi/{name}.png', buf.getvalue())
+            png = io.BytesIO()
+            im.save(png, 'PNG')
+            (res / f'{name}.png').write_bytes(png.getvalue())
+            zf.writestr(f'res/drawable-xxhdpi/{name}.png', png.getvalue())
+    out[status] = buf.getvalue()
+    return out
+
+
+def build(dst: Path, files: dict[str, bytes]) -> None:
+    """Write the two module zips into the directory dst."""
+    for name, data in files.items():
+        (dst / name).write_bytes(data)
 
 
 if __name__ == '__main__':
-    build(BUILD)
+    build(BUILD, files())
     print(len(list((BUILD / 'statusbar').glob('*.png'))), 'icons')

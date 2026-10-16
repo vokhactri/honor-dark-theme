@@ -34,7 +34,7 @@ def canvas(layer: Arr) -> Image.Image:
     """A 512px layer (the part the launcher shows) on the 218px canvas."""
     out = Image.new('RGBA', (SIZE, SIZE))
     im = Image.fromarray(np.clip(np.round(layer), 0, 255).astype(np.uint8))
-    out.alpha_composite(im.resize((VIEW, VIEW), Image.LANCZOS), (M, M))
+    out.alpha_composite(im.resize((VIEW, VIEW), Image.Resampling.LANCZOS), (M, M))
     return out
 
 
@@ -54,7 +54,9 @@ def masked(fg: Arr, m: np.ndarray) -> Arr:
 
 def turned(fg: Arr, angle: float) -> Arr:
     """fg turned counterclockwise by angle degrees about the center."""
-    return np.asarray(Image.fromarray(fg.astype(np.uint8)).rotate(angle, Image.BICUBIC, center=(C, C))).astype(float)
+    return np.asarray(
+        Image.fromarray(fg.astype(np.uint8)).rotate(angle, Image.Resampling.BICUBIC, center=(C, C))
+    ).astype(float)
 
 
 def clock() -> dict[str, Image.Image]:
@@ -96,7 +98,7 @@ def weather() -> dict[str, Image.Image]:
         ga[ga < 0.02] = 0
         gc = np.clip((ic * ia - pc * pa * (1 - ga)) / np.maximum(ga, 1e-6), 0, 1)
         glyph = np.concatenate([gc, ga], -1)[M : M + VIEW, M : M + VIEW] * 255
-        big = np.asarray(Image.fromarray(np.round(glyph).astype(np.uint8)).resize((512, 512), Image.LANCZOS))
+        big = np.asarray(Image.fromarray(np.round(glyph).astype(np.uint8)).resize((512, 512), Image.Resampling.LANCZOS))
         out[f.stem] = on_plate(big.astype(float))
     return out
 
