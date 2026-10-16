@@ -16,6 +16,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "basedpyright>=1.40.2",
+    "pre-commit>=4.7.0",
     "ruff>=0.17.0",
     "scipy-stubs>=1.18.1.1",
 ]

@@ -42,11 +42,13 @@ uv run ruff check
 uv run basedpyright
 ```
 
-CI runs only ruff. To run all three checks on every commit, turn on the repo's pre-commit hook once per clone:
+CI runs only ruff. To run all three checks on every commit, install the pre-commit hooks once per clone:
 
 ```sh
-git config core.hooksPath .githooks
+uv run pre-commit install
 ```
+
+The hooks also run `uv lock` when `pyproject.toml` changes. If that rewrites `uv.lock`, the commit stops so you can stage it.
 
 ## Release
 
