@@ -11,6 +11,7 @@ OVERRIDES: dict[str, App] = {
     'app.revanced.manager.flutter': App(frac=0.60),
     'com.alibaba.aliexpresshd': App(recolor=None),
     'com.android.vending': App(recolor=None, frac=0.72),
+    'com.bachhoaxanh': App(recolor=None),
     'com.beeasy.toppay': App(recolor=None),
     'com.bhxhapp': App(frac=0.715),
     'com.binance.dev': App(recolor=None),
