@@ -20,9 +20,6 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v10.3.0
-        with:
-          # "auto" skips the cache on tag pushes, which is every release
-          enable-cache: true
       - if: github.ref_type == 'tag'
         name: Check the tag matches the version in pyproject.toml
         run: |
